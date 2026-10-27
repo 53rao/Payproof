@@ -20,7 +20,7 @@ export default function LoginPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Could not sign in.");
       const next = new URLSearchParams(window.location.search).get("next");
-      router.replace(next?.startsWith("/admin") && !next.startsWith("//") ? next : "/admin");
+      router.replace(next && (next.startsWith("/admin") || next.startsWith("/owner/")) && !next.startsWith("//") ? next : "/admin");
       router.refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not sign in.");

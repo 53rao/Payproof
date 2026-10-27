@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { createDemoOrder } from "@/lib/demo-store";
 import { products } from "@/lib/products";
 
@@ -17,8 +18,11 @@ export async function POST(request: Request) {
       if (existing) existing.quantity += quantity; else items.push({ id, quantity });
     }
     if (!items.length) return NextResponse.json({ error: "Your bag is empty." }, { status: 400 });
-    const order = await createDemoOrder(items, idempotencyKey);
-    return NextResponse.json({ ...order, items, simulated: true });
+    const accessTokenHash = createHash("sha256").update(idempotencyKey).digest("hex");
+    const order = await createDemoOrder(items, idempotencyKey, accessTokenHash);
+    const response = NextResponse.json({ ...order, items, simulated: true }, { headers: { "Cache-Control": "no-store" } });
+    response.cookies.set(`payproof_order_${order.id}`, idempotencyKey, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: 60 * 60 * 24 * 365 });
+    return response;
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not create checkout." }, { status: 400 });
   }
