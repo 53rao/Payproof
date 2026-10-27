@@ -1,0 +1,37 @@
+{
+  "name": "payproof",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "owner:hash": "node scripts/hash-owner-password.mjs"
+  },
+  "prisma": {
+    "seed": "tsx scripts/seed-db.ts"
+  },
+  "dependencies": {
+    "@gsap/react": "^2.1.2",
+    "@prisma/adapter-neon": "^6.19.3",
+    "@prisma/client": "^6.19.3",
+    "gsap": "^3.13.0",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "prisma": "^6.19.3",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  }
+}

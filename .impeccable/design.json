@@ -1,0 +1,144 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-27T05:28:53Z",
+  "title": "Design System: PayProof Merchant Desk",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Desk Ink"
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Cool Canvas"
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Paper White"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Quiet Divider"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Secondary Copy"
+      },
+      "success": {
+        "role": "success",
+        "displayName": "Ledger Green"
+      },
+      "failure": {
+        "role": "error",
+        "displayName": "Payment Red"
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "entrance",
+        "value": "GSAP power2.out, 0.42s",
+        "purpose": "One restrained first-view entrance; content is visible by default and reduced-motion preferences disable it."
+      },
+      {
+        "name": "control",
+        "value": "GSAP power1.out, 0.25s",
+        "purpose": "Communicate the stock-protection toggle state."
+      },
+      {
+        "name": "section-snap",
+        "value": "y mandatory; snap-stop always",
+        "purpose": "Keep each scroll view aligned to one section; navigation highlights the section currently in view."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "wide",
+        "value": "1360px"
+      },
+      {
+        "name": "tablet",
+        "value": "1120px"
+      },
+      {
+        "name": "compact",
+        "value": "760px"
+      },
+      {
+        "name": "small",
+        "value": "420px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "White information panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Primary container for metrics, event charts, cases, and records.",
+      "html": "<article class=\"ds-panel\"><h2>Payment events</h2><p>Recent outcomes from the simulated checkout.</p></article>",
+      "css": ".ds-panel { background: #fff; color: #111416; border: 1px solid #e2e6e9; border-radius: 14px; padding: 20px; } .ds-panel h2 { margin: 0; font: 650 17px/1.35 'DM Sans', sans-serif; letter-spacing: -0.025em; } .ds-panel p { margin: 5px 0 0; color: #66717d; font: 400 12px/1.5 'DM Sans', sans-serif; } .ds-panel:focus-visible { outline: 3px solid #6b92cb; outline-offset: 3px; }"
+    },
+    {
+      "name": "Black feature panel",
+      "kind": "card",
+      "refersTo": "feature-panel",
+      "description": "High-contrast surface for the stock-safety control and AI-assist message.",
+      "html": "<article class=\"ds-feature\"><h2>Order safety</h2><p>Release reserved inventory after a simulated payment failure.</p></article>",
+      "css": ".ds-feature { background: #111416; color: #fff; border-radius: 14px; padding: 20px; } .ds-feature h2 { margin: 0; font: 650 17px/1.35 'DM Sans', sans-serif; letter-spacing: -0.025em; } .ds-feature p { max-width: 30ch; margin: 8px 0 0; color: #b8c0c6; font: 400 11px/1.55 'DM Sans', sans-serif; }"
+    },
+    {
+      "name": "Section rail item",
+      "kind": "nav",
+      "description": "Icon-only anchor to an in-page dashboard section, with an accessible label.",
+      "html": "<a class=\"ds-rail-item\" href=\"#events\" aria-label=\"Payment events\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19.5h16M6 16v-5m4 5V5m4 11v-7m4 7V8\"/></svg></a>",
+      "css": ".ds-rail-item { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 13px; color: #5b6672; transition: background .18s, color .18s, transform .18s; } .ds-rail-item svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-rail-item:hover { background: #f0f2f4; color: #111; transform: translateY(-1px); } .ds-rail-item:focus-visible { outline: 3px solid #6b92cb; outline-offset: 3px; }"
+    },
+    {
+      "name": "Semantic status chip",
+      "kind": "chip",
+      "refersTo": "status-chip",
+      "description": "Compact success state; failed and pending variants use matching semantic colors.",
+      "html": "<span class=\"ds-status\">Paid</span>",
+      "css": ".ds-status { display: inline-flex; align-items: center; border-radius: 6px; background: #e9f7ef; padding: 5px 8px; color: #13834e; font: 600 9px/1.3 'DM Sans', sans-serif; } .ds-status:hover { background: #d9f0e3; } .ds-status:focus-visible { outline: 3px solid #6b92cb; outline-offset: 3px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A calm merchant desk that makes operational evidence easy to scan.",
+    "overview": "The dashboard pairs a cool neutral canvas with crisp white panels and a few black feature surfaces. It makes payment state and inventory consequences visible together, while keeping simulated data and evidence limits explicit. A narrow navigation rail and lower-page secondary records keep the first viewport focused.",
+    "keyCharacteristics": [
+      "A 72px icon rail preserves section-based scrolling.",
+      "A live event stream is sourced from persisted orders and cases.",
+      "The black safety and assist panels provide contrast inside an otherwise light workspace.",
+      "Inventory events are never invented when the ledger does not record them.",
+      "Major sections snap into a full-height view, and the rail follows the section currently in view."
+    ],
+    "rules": [
+      {
+        "name": "Evidence first",
+        "body": "Show what records establish and what remains unknown.",
+        "section": "components"
+      },
+      {
+        "name": "Quiet surfaces",
+        "body": "Use borders and spacing for hierarchy; reserve black for feature panels.",
+        "section": "elevation"
+      },
+      {
+        "name": "Semantic status",
+        "body": "Red and green communicate payment or protection state, not decoration.",
+        "section": "colors"
+      }
+    ],
+    "dos": [
+      "Do label all customer, payment, and inventory values as simulated.",
+      "Do keep section anchors, visible focus states, and reduced-motion behavior.",
+      "Do show a clear empty state when the backing ledger has no event type."
+    ],
+    "donts": [
+      "Don't infer fulfillment or customer intent from a payment outcome.",
+      "Don't fabricate inventory event history.",
+      "Don't crowd every operational record into the opening viewport."
+    ]
+  }
+}

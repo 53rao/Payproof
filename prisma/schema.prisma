@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id             String            @id
+  name           String
+  priceCents     Int               @map("price_cents")
+  initialStock   Int               @default(12) @map("initial_stock")
+  availableStock Int               @default(12) @map("available_stock")
+  simulated      Boolean           @default(true)
+  orderItems     OrderItem[]
+  reservations   StockReservation[]
+
+  @@map("products")
+}
+
+model Owner {
+  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String     @unique(map: "owners_email_unique")
+  passwordHash String     @map("password_hash")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  aiDrafts     AiDraft[]
+
+  @@map("owners")
+}
+
+model Order {
+  id                String             @id
+  idempotencyKey    String             @unique(map: "orders_idempotency_key_unique") @map("idempotency_key")
+  cartFingerprint  String             @map("cart_fingerprint")
+  totalCents        Int                @map("total_cents")
+  status            OrderStatus        @default(PENDING)
+  simulated         Boolean            @default(true)
+  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  items             OrderItem[]
+  reservations      StockReservation[]
+  paymentEvents     PaymentEvent[]
+  cases             Case[]
+
+  @@map("orders")
+}
+
+model OrderItem {
+  orderId       String  @map("order_id")
+  productId     String  @map("product_id")
+  quantity      Int
+  unitPriceCents Int    @map("unit_price_cents")
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "order_items_order_id_orders_id_fk")
+  product       Product @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_items_product_id_products_id_fk")
+
+  @@id([orderId, productId], map: "order_items_order_id_product_id_pk")
+  @@map("order_items")
+}
+
+model StockReservation {
+  orderId   String            @map("order_id")
+  productId String            @map("product_id")
+  quantity  Int
+  status    ReservationStatus @default(HELD)
+  expiresAt DateTime?         @map("expires_at") @db.Timestamptz(6)
+  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  order     Order             @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "stock_reservations_order_id_orders_id_fk")
+  product   Product           @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "stock_reservations_product_id_products_id_fk")
+
+  @@id([orderId, productId], map: "stock_reservations_order_id_product_id_pk")
+  @@map("stock_reservations")
+}
+
+model PaymentEvent {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId       String   @map("order_id")
+  type          String
+  paymentStatus String?  @map("payment_status")
+  issue         String?
+  debugId       String?  @map("debug_id")
+  rawJson       Json     @default("{}") @map("raw_json")
+  simulated     Boolean  @default(true)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payment_events_order_id_orders_id_fk")
+
+  @@map("payment_events")
+}
+
+model Case {
+  id          String      @id
+  orderId     String      @map("order_id")
+  type        String
+  status      CaseStatus  @default(OPEN)
+  cause       String
+  uncertainty String
+  simulated   Boolean     @default(true)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cases_order_id_orders_id_fk")
+  items       CaseItem[]
+  drafts      AiDraft[]
+
+  @@map("cases")
+}
+
+model CaseItem {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId       String   @map("case_id")
+  kind         String
+  referenceId  String?  @map("reference_id")
+  completeness String
+  payload      Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  case         Case     @relation(fields: [caseId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "case_items_case_id_cases_id_fk")
+
+  @@map("case_items")
+}
+
+model AiDraft {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId     String    @map("case_id")
+  kind       String
+  body       String
+  approvedBy String?   @map("approved_by") @db.Uuid
+  approvedAt DateTime? @map("approved_at") @db.Timestamptz(6)
+  simulated  Boolean   @default(true)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  case       Case      @relation(fields: [caseId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "ai_drafts_case_id_cases_id_fk")
+  owner      Owner?    @relation(fields: [approvedBy], references: [id], onDelete: SetNull, onUpdate: NoAction, map: "ai_drafts_approved_by_owners_id_fk")
+
+  @@map("ai_drafts")
+}
+
+model ProtectionSetting {
+  id        Int      @id @default(1) @db.SmallInt
+  enabled   Boolean  @default(true)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("protection_settings")
+}
+
+model DemoRun {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  startedAt DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(6)
+  simulated Boolean   @default(true)
+
+  @@map("demo_runs")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+
+  @@map("order_status")
+}
+
+enum ReservationStatus {
+  HELD
+  RELEASED
+  COMMITTED
+
+  @@map("reservation_status")
+}
+
+enum CaseStatus {
+  OPEN
+  REVIEWED
+  CLOSED
+
+  @@map("case_status")
+}
