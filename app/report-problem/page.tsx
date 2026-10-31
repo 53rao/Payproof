@@ -47,10 +47,10 @@ export default function ReportProblemPage() {
   }
 
   const selected = orders.find((order) => order.id === orderId);
-  return <main className="pp-customer-shell">
-    <header className="pp-customer-nav"><Link href="/" className="pp-customer-brand"><span>p.</span> little things <small>SUPPLY CO.</small></Link><Link href="/#shop">Back to the store ↗</Link></header>
+  return <main className="pp-customer-shell archive-storefront">
+    <header className="pp-customer-nav"><Link href="/" className="archive-brand">little things <small>SUPPLY CO.</small></Link><Link href="/#shop">Back to the store <span aria-hidden="true">↗</span></Link></header>
     <div className="pp-customer-wrap">
-      <div className="pp-customer-heading"><span className="pp-customer-mark">↗</span><div><h1>Tell us what happened.</h1><p>We’ll attach your note to the order so the store team can review it.</p></div></div>
+      <div className="pp-customer-heading"><div><p className="pp-customer-kicker"><span aria-hidden="true"/> ORDER SUPPORT · CUSTOMER CARE</p><h1>Tell us what happened.</h1><p>We’ll attach your note to the order so the store team can review it.</p></div></div>
       {submitted ? <section className="pp-customer-confirm" aria-live="polite"><span className="pp-customer-confirm-icon">✓</span><h2>Your report is with the store.</h2><p>We saved your message exactly as you entered it for order <b>{submitted.orderId}</b>.</p><p className="pp-customer-confirm-ref">Case reference <b>{submitted.caseId}</b> · SIMULATED DEMO</p><Link href="/" className="pp-customer-button">Return to the store</Link></section> : <form className="pp-customer-form" onSubmit={submit}>
         <div className="pp-customer-form-title"><div><h2>Report a problem / request a return</h2><p>Your note is shared with the store owner for review.</p></div><span>SIMULATED STORE</span></div>
         <label htmlFor="complaint-order">Order</label>
