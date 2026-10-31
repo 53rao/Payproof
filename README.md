@@ -6,7 +6,7 @@ PayProof is a merchant incident and trust desk for PayPal-powered stores. The cu
 
 ## Run locally
 
-Requirements: Node.js 20.9 or newer.
+Requirements: Node.js 21.0 or newer.
 
 ```sh
 cp .env.example .env.local
