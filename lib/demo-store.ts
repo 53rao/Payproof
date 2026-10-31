@@ -7,7 +7,7 @@ type OrderState = "PENDING" | "PROCESSING" | "PAID" | "FAILED";
 type ReservationState = "HELD" | "RELEASED" | "COMMITTED";
 type Order = { id: string; amount: number; items: { id: string; quantity: number }[]; status: OrderState; createdAt: string; payment?: PaymentResult; issue?: string; debug_id?: string; customerAccessTokenHash?: string; recoveredFromOrderId?: string; checkoutIssueType?: string; checkoutIssueDetails?: string };
 type Reservation = { orderId: string; productId: string; quantity: number; state: ReservationState; expiresAt: number };
-type CaseRecord = { id: string; orderId: string; issue: string; debug_id?: string; createdAt: string; status: "OPEN"; type?: string };
+type CaseRecord = { id: string; orderId: string; issue: string; debug_id?: string; createdAt: string; status: "OPEN" | "CLOSED"; type?: string };
 type Ledger = { idempotency: Record<string, { orderId: string; cart: string }>; orders: Order[]; reservations: Reservation[]; cases: CaseRecord[]; stock: Record<string, number>; protected: boolean; paymentEvents: number; failedPayments: number; recoveredStock: number; stuckStock: number };
 const initialStock = () => Object.fromEntries(products.map((product) => [product.id, 12]));
 const freshLedger = (): Ledger => ({ idempotency: {}, orders: [], reservations: [], cases: [], stock: initialStock(), protected: true, paymentEvents: 0, failedPayments: 0, recoveredStock: 0, stuckStock: 0 });
@@ -123,6 +123,13 @@ export function findMemoryCustomerOrder(accessTokenHash: string, orderId?: strin
 export function listMemoryCustomerOrders(accessTokenHashes: string[]) {
   const hashes = new Set(accessTokenHashes);
   return ledger().orders.filter((item) => item.customerAccessTokenHash && hashes.has(item.customerAccessTokenHash)).map((order) => ({ id: order.id, amount: order.amount, status: order.status, createdAt: order.createdAt, items: order.items.map((item) => ({ id: item.id, quantity: item.quantity })) }));
+}
+
+export function closeMemoryCase(caseId: string) {
+  const record = ledger().cases.find((item) => item.id === caseId);
+  if (!record) return false;
+  record.status = "CLOSED";
+  return true;
 }
 
 export function createMemoryComplaint(accessTokenHash: string, orderId: string, type: string, originalText: string) {

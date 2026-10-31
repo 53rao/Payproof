@@ -141,15 +141,12 @@ Principles: motion explains state change. Feedback within 100 ms of any click. D
 5. **AI explanation:** text streams from real tokens (no fake delay), then evidence chips stagger in.
 6. **Approve draft:** button morphs to "Sent (simulated)" with a check, the card collapses.
 7. **Dashboard widgets:** staggered entrance; changed values tween rather than jump.
-8. **Presenter mode steps:** the beat indicator slides between steps.
 
 Do not heavily animate AG Studio internals; animate wrappers and values around them.
 
-## 8. Presentation features
-- **Presenter mode:** toggle that shows the current demo beat, enlarges counters, and adds a REAL / SIMULATED badge on each element.
-- **Split view:** storefront left, owner console right, so one screen recording covers both (behind owner login; documented credentials for judges).
+## 8. Demo controls
 - **Reset demo:** one button restores seeded fictional data for repeatable takes.
-- **Keyboard shortcuts:** next and previous beat, trigger decline, toggle protections.
+- **Keyboard shortcuts:** trigger decline and toggle protections.
 - **Design:** one coherent visual language, dark neutral console with a single accent, clear empty, loading and error states.
 
 ## 9. 3-minute demo script (video must be under 3 minutes, public on YouTube)
@@ -199,7 +196,7 @@ Minimize customer data, never store card data, mask emails in the UI, protect ev
 | P2 | 3 to 4 | Ledger, stock reservation, duplicate protection, ON/OFF counters, demo controls (mock), SSE | Protections demo works on the mock |
 | P3 | 5 to 7 | Auth, AG Studio console, case engine, connector endpoint, custom widgets | Private console live |
 | P4 | 8 to 9 | AI explanation, drafts, case Q&A, guardrails, motion pass | AI and animated flows live |
-| P5 | 10 to 11 | Win-back, evidence collector, escalation packet (simulated), presenter mode, split view, local history (X) | Full simulated product |
+| P5 | 10 to 11 | Win-back, evidence collector, escalation packet (simulated), local history (X) | Full simulated product |
 | P6 | 12 to 14 | Real PayPal sandbox adapter written with the APIMatic plugin, JS SDK buttons, real failure triggers, webhooks if verified, remap the mock, APIMatic log | Golden path on the real sandbox |
 | P7 | 15 to 16 | Video, submission assets, buffer; submit a day early | Submitted |
 

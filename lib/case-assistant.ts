@@ -298,6 +298,44 @@ export async function updateDraft(caseId: string, draftId: string, body: string)
   return { status: "ok" as const, draft: { id: row.id, caseId: row.caseId, kind: row.kind as DraftKind, body: row.body, approvedAt: row.approvedAt?.toISOString() ?? null, simulated: true as const, createdAt: row.createdAt.toISOString() } };
 }
 
+export async function markCustomerReplyDraftSaved(caseId: string, draftId: string) {
+  const db = getDatabase();
+  if (!db) {
+    const draft = memoryDrafts().find((item) => item.id === draftId && item.caseId === caseId && item.kind === "customer_status_update");
+    if (!draft) return false;
+    const saved = memorySavedCustomerReplyDrafts();
+    saved.set(`${caseId}:${draftId}`, draft.body);
+    return true;
+  }
+  const draft = await db.aiDraft.findFirst({ where: { id: draftId, caseId, kind: "customer_status_update" }, select: { id: true, body: true } });
+  if (!draft) return false;
+  const marker = await db.caseItem.findFirst({ where: { caseId, kind: "customer_reply_draft_saved", referenceId: draftId }, select: { id: true } });
+  if (!marker) await db.caseItem.create({ data: { caseId, kind: "customer_reply_draft_saved", referenceId: draftId, completeness: "PRESENT", payload: { draftId, body: draft.body } } });
+  else await db.caseItem.update({ where: { id: marker.id }, data: { completeness: "PRESENT", payload: { draftId, body: draft.body } } });
+  return true;
+}
+
+export async function hasSavedCustomerReplyDraft(caseId: string) {
+  const db = getDatabase();
+  if (!db) {
+    const saved = memorySavedCustomerReplyDrafts();
+    return memoryDrafts().some((draft) => draft.caseId === caseId && draft.kind === "customer_status_update" && saved.get(`${caseId}:${draft.id}`) === draft.body);
+  }
+  const markers = await db.caseItem.findMany({ where: { caseId, kind: "customer_reply_draft_saved", completeness: "PRESENT" }, select: { referenceId: true, payload: true } });
+  for (const marker of markers) {
+    const payload = marker.payload as { body?: unknown };
+    if (!marker.referenceId || typeof payload.body !== "string") continue;
+    const draft = await db.aiDraft.findFirst({ where: { id: marker.referenceId, caseId, kind: "customer_status_update" }, select: { body: true } });
+    if (draft?.body === payload.body) return true;
+  }
+  return false;
+}
+
+const savedDraftStore = globalThis as typeof globalThis & { payproofSavedCustomerReplyDrafts?: Map<string, string> };
+function memorySavedCustomerReplyDrafts() {
+  return savedDraftStore.payproofSavedCustomerReplyDrafts ??= new Map<string, string>();
+}
+
 export function isDraftKind(value: unknown): value is DraftKind {
   return value === "customer_status_update" || value === "missing_information_request";
 }
