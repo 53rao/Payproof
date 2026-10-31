@@ -183,218 +183,52 @@ export default function Home() {
   }
 
   return (
-    <main>
-      <div className="announcement">
-        <span>✦</span> A little shop for the everyday
-        <span className="sim-pill">{paypalConfig?.configured ? "PAYPAL SANDBOX" : "DEMO STORE"}</span>
-      </div>
-      <header className="nav">
-        <a className="brand" href="#top">
-          <span className="brand-mark">p.</span> little things <span className="brand-shop">SUPPLY CO.</span>
-        </a>
-        <div className="nav-links">
-          <a href="#shop">Shop</a>
-          <a href="#story">Our story</a>
-          <a href="/report-problem">Order help</a>
-          <a href="/admin">Merchant desk</a>
-          <a className="nav-cart" href="#bag">
-            Bag <span>{count.toString().padStart(2, "0")}</span>
-          </a>
-        </div>
+    <main className="archive-storefront">
+      <div className="archive-notice"><span>THE EVERYDAY ARCHIVE</span><span>{paypalConfig?.configured ? "PAYPAL SANDBOX" : "SIMULATED STORE"}</span></div>
+      <header className="archive-nav">
+        <a className="archive-brand" href="#top" aria-label="Little Things Supply Co. home">little things <small>SUPPLY CO.</small></a>
+        <nav className="archive-nav-links" aria-label="Main navigation">
+          <a href="#shop">Shop</a><a href="#story">Our story</a><a href="/report-problem">Order help</a><a href="/admin">Merchant desk</a>
+        </nav>
+        <a className="archive-bag-link" href="#bag">Bag <span>{count.toString().padStart(2, "0")}</span><ArchiveBagIcon/></a>
       </header>
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <p className="eyebrow"><span className="eyebrow-line"/> THOUGHTFULLY MADE, MADE TO LAST</p>
-          <h1>Good things<br/>for <em>everyday.</em></h1>
-          <p className="hero-sub">Useful, beautiful objects that make the ordinary feel like something.</p>
-          <a className="text-link" href="#shop">Find your little something <span>↗</span></a>
-          <div className="hero-note"><span className="note-star">✳</span><span>Small batches.<br/>Big everyday energy.</span></div>
-        </div>
-        <div className="hero-art">
-          <div className="sun-disc"/>
-          <div className="hero-orbit orbit-one"/>
-          <div className="hero-orbit orbit-two"/>
-          <div className="hero-vase">
-            <div className="vase-neck"/>
-            <div className="vase-body"/>
-            <div className="vase-stem stem-a"/>
-            <div className="vase-stem stem-b"/>
-            <div className="vase-leaf leaf-a"/>
-            <div className="vase-leaf leaf-b"/>
-          </div>
-          <div className="hero-art-label">OBJECTS FOR<br/>SLOWER DAYS <span>✳ 01 / 06</span></div>
-          <div className="hero-sticker">made<br/>with care <b>✳</b></div>
-        </div>
+
+      <section className="archive-hero" id="top">
+        <div className="archive-hero-copy"><p className="archive-kicker"><span/> The everyday archive</p><h1>Good things<br/>for <em>everyday.</em></h1><p className="archive-hero-intro">Useful, beautiful objects that make the ordinary feel like something.</p><a className="archive-cta" href="#shop">Shop the collection <span>↗</span></a><p className="archive-edition">A considered collection for home, work, travel &amp; slower days</p></div>
+        <figure className="archive-hero-image"><img src="/images/everyday-archive-hero.png" alt="A canvas tote, ceramic mug, candle, notebook, bottle and socks arranged on warm orange display plinths"/><figcaption><span>OBJECTS FOR REAL LIFE</span><span>01 — 06</span></figcaption></figure>
       </section>
-      <section className="shop-section" id="shop">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">THE GOOD STUFF <span>— 06 OBJECTS</span></p>
-            <h2>Meet your new <em>favorite.</em></h2>
-          </div>
-          <label className="search-box">
-            <span>⌕</span>
-            <input aria-label="Search products" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find something…"/>
-          </label>
-        </div>
-        <div className="product-grid">
-          {filtered.map((product, index) => (
-            <ProductCard key={product.id} product={product} index={index} quantity={cart[product.id] ?? 0} onAdd={() => change(product.id, 1)} />
-          ))}
-        </div>
-        {filtered.length === 0 && <p className="empty-search">Nothing here yet. Try another search.</p>}
+
+      <section className="archive-collection" id="shop">
+        <div className="archive-section-head"><div><p className="archive-kicker"><span/> The collection</p><h2>Useful things,<br/><em>well considered.</em></h2></div><label className="archive-search"><ArchiveSearchIcon/><input aria-label="Search products" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search the collection"/><span>⌘ /</span></label></div>
+        <div className="archive-product-grid">{filtered.map((product) => <ProductCard key={product.id} product={product} index={products.findIndex((item) => item.id === product.id)} quantity={cart[product.id] ?? 0} onAdd={() => change(product.id, 1)}/>)}</div>
+        {filtered.length === 0 && <p className="archive-empty-search">No objects match that search. Try a product name or category.</p>}
       </section>
-      <section className="story-strip" id="story">
-        <span className="story-icon">✳</span>
-        <p>Everyday objects, made a little more <em>intentional.</em></p>
-        <span className="story-end">DESIGNED FOR THE LONG HAUL&nbsp; ↗</span>
-      </section>
-      <section className="bag-section" id="bag">
-        <div className="bag-title">
-          <p className="eyebrow">YOUR LITTLE HAUL</p>
-          <h2>The bag<span className="bag-count">{count.toString().padStart(2, "0")}</span></h2>
-        </div>
-        <div className="bag-content">
-          {cartEntries.length === 0 ? (
-            <div className="bag-empty">
-              <span>◌</span>
-              <p>Your bag is taking a breather.</p>
-              <a href="#shop" className="text-link">Find something lovely ↗</a>
-            </div>
-          ) : (
-            <>
-              <div className="bag-lines">
-                {cartEntries.map(([id, quantity]) => {
-                  const product = products.find((p) => p.id === id)!;
-                  return (
-                    <div className="bag-line" key={id}>
-                      <div className="bag-thumb" style={{ backgroundColor: product.color }}>{product.icon}</div>
-                      <div className="bag-line-info">
-                        <span>{product.name}</span>
-                        <small>{money(product.price)} each</small>
-                      </div>
-                      <div className="quantity">
-                        <button onClick={() => change(id, -1)} aria-label={`Remove one ${product.name}`}>−</button>
-                        <span>{quantity}</span>
-                        <button onClick={() => change(id, 1)} aria-label={`Add one ${product.name}`}>+</button>
-                      </div>
-                      <strong>{money(product.price * quantity)}</strong>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="bag-summary">
-                <span>Subtotal</span>
-                <b>{money(total)}</b>
-              </div>
-              <div className="checkout-actions">
-                {paypalConfig?.configured && sdkReady ? (
-                  <div style={{ width: "100%", maxWidth: "340px" }}>
-                    <div id="paypal-button-container" />
-                    <small style={{ display: "block", marginTop: "6px", color: "var(--muted)" }}>
-                      PayPal Sandbox SDK · Buyer approval popup active
-                    </small>
-                  </div>
-                ) : (
-                  <>
-                    <MotionButton
-                      className="checkout-button"
-                      state={busy ? "loading" : result === "success" ? "success" : error ? "error" : "idle"}
-                      onClick={() => pay("success")}
-                      disabled={count === 0}
-                    >
-                      Continue to checkout <span>↗</span>
-                    </MotionButton>
-                    <small>Checkout in this demo is simulated.</small>
-                  </>
-                )}
-              </div>
-            </>
-          )}
-          {error && <p className="inline-error">{error}</p>}
-          {result && (
-            <div className={`result-card ${result === "success" ? "result-success" : "result-error"}`}>
-              <span className="result-icon">{result === "success" ? "✓" : "!"}</span>
-              <div>
-                <b>
-                  {result === "success"
-                    ? "Payment complete"
-                    : result === "decline"
-                    ? "Payment declined"
-                    : result === "duplicate"
-                    ? "Duplicate submission detected"
-                    : "Reservation expired"}
-                </b>
-                <p>
-                  {result === "success"
-                    ? "Your order is all set. Thanks for stopping by."
-                    : `${isRealSandbox ? "PAYPAL SANDBOX" : "SIMULATED"} · ${resultIssue || "PAYMENT_FAILED"}${debugId ? ` · debug ID ${debugId}` : ""} · No payment was taken.`}
-                </p>
-                {checkout && (
-                  <>
-                    <small>Order {checkout.id} · {money(checkout.amount)} · {isRealSandbox ? "PAYPAL SANDBOX" : "SIMULATED"}</small>
-                    <a className="order-help-link" href="/report-problem">Need help with this order? Report a problem or request a return ↗</a>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-          <div className="demo-panel">
-            <div className="demo-heading">
-              <span className="demo-dot"/> DEMO CONTROLS 
-              <span className="sim-pill">{paypalConfig?.configured ? "PAYPAL SANDBOX ACTIVE" : "SIMULATED"}</span>
-            </div>
-            <p>
-              {paypalConfig?.configured
-                ? "PayPal Sandbox is connected. Scenario triggers send PayPal-Mock-Response headers directly to the sandbox to verify real error shapes and debug IDs."
-                : "Try a payment scenario with the local mock provider. The note is stored as a customer-reported detail, separate from the provider result."}
-            </p>
-            <label className="checkout-issue-label" htmlFor="checkout-issue-type">What happened during checkout?</label>
-            <select id="checkout-issue-type" className="checkout-issue-select" value={reportedIssueType} onChange={(event) => setReportedIssueType(event.target.value as typeof reportedIssueType)}>
-              <option value="PAYMENT_DECLINED">Payment was declined</option>
-              <option value="DUPLICATE_SUBMISSION">I may have submitted payment twice</option>
-              <option value="OTHER">Something else</option>
-            </select>
-            <label className="checkout-issue-label" htmlFor="checkout-issue-details">Add details <span>optional</span></label>
-            <textarea id="checkout-issue-details" className="checkout-issue-textarea" value={reportedIssueDetails} onChange={(event) => setReportedIssueDetails(event.target.value)} maxLength={1000} placeholder="Tell the store what you experienced…"/>
-            <small className="checkout-issue-hint">Saved with the case in your original wording. Don’t include full card numbers or security codes.</small>
-            <div className="demo-buttons">
-              <button onClick={() => count ? pay(reportedIssueType === "DUPLICATE_SUBMISSION" ? "duplicate" : "decline") : setError("Add an item to your bag first.")}>
-                Run selected scenario ↗
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
-      <footer>
-        <a className="brand" href="#top"><span className="brand-mark">p.</span> little things <span className="brand-shop">SUPPLY CO.</span></a>
-        <a href="/report-problem">Report a problem / request a return</a>
-        <span>{paypalConfig?.configured ? "PAYPAL SANDBOX CONNECTED" : "FICTIONAL STORE · DEMO EXPERIENCE"}</span>
-        <span>MADE FOR THE EVERYDAY&nbsp; ✳</span>
-      </footer>
+
+      <section className="archive-story" id="story"><div className="archive-story-image" role="img" aria-label="Warm still life of useful everyday objects"/><div className="archive-story-copy"><p className="archive-kicker"><span/> Our story</p><h2>Everyday objects,<br/>made a little more<br/><em>intentional.</em></h2><p>Useful, beautiful things for the small rituals that make a day feel like your own.</p><a href="#bag">Find your little something <span>↗</span></a></div><div className="archive-story-index">LT<br/><b>01</b><span>MADE FOR<br/>THE EVERYDAY</span></div></section>
+
+      <section className="archive-bag-section" id="bag"><div className="archive-bag-heading"><p className="archive-kicker"><span/> Your selection</p><h2>The bag <em>{count.toString().padStart(2, "0")}</em></h2><p>Take a closer look at what you’ve chosen.</p></div><div className="archive-bag-layout"><div className="archive-bag-content">
+        {cartEntries.length === 0 ? <div className="archive-bag-empty"><span>01</span><div><b>Your bag is taking a breather.</b><p>Add an object from the collection to begin.</p></div><a href="#shop">Return to the collection ↗</a></div> : <div className="archive-bag-lines">{cartEntries.map(([id, quantity]) => {const product = products.find((item) => item.id === id)!; return <div className="archive-bag-line" key={id}><div className={`archive-bag-thumb product-${id}`} style={{backgroundImage:"url('/images/everyday-archive-products.png')"}}/><div className="archive-bag-info"><b>{product.name}</b><small>{money(product.price)} each</small></div><div className="archive-quantity"><button type="button" onClick={() => change(id,-1)} aria-label={`Remove one ${product.name}`}>−</button><span>{quantity}</span><button type="button" onClick={() => change(id,1)} aria-label={`Add one ${product.name}`}>+</button></div><strong>{money(product.price*quantity)}</strong></div>})}</div>}
+        {error && <p className="archive-error" role="alert">{error}</p>}
+        {result && <div className={`archive-result ${result === "success" ? "success" : "failure"}`} role="status"><span>{result === "success" ? "✓" : "!"}</span><div><b>{result === "success" ? "Payment complete" : result === "decline" ? "Payment declined" : result === "duplicate" ? "Duplicate submission detected" : "Reservation expired"}</b><p>{result === "success" ? "Your order is all set. Thanks for stopping by." : `${isRealSandbox ? "PAYPAL SANDBOX" : "SIMULATED"} · ${resultIssue || "PAYMENT_FAILED"}${debugId ? ` · debug ID ${debugId}` : ""} · No payment was taken.`}</p>{checkout && <><small>Order {checkout.id} · {money(checkout.amount)} · {isRealSandbox ? "PAYPAL SANDBOX" : "SIMULATED"}</small><a href="/report-problem">Need help with this order? Report a problem ↗</a></>}</div></div>}
+        <div className="archive-demo-panel"><div className="archive-demo-head"><div><span className="archive-demo-dot"/> DEMO CHECKOUT</div><span className="archive-sim-pill">{paypalConfig?.configured ? "PAYPAL SANDBOX" : "SIMULATED"}</span></div><p>Try the checkout flow with fictional products. No real payment is processed.</p><label htmlFor="checkout-issue-type">Scenario <small>Choose a simulated outcome</small></label><select id="checkout-issue-type" value={reportedIssueType} onChange={(event) => setReportedIssueType(event.target.value as typeof reportedIssueType)}><option value="PAYMENT_DECLINED">Payment declined</option><option value="DUPLICATE_SUBMISSION">Possible duplicate submission</option><option value="OTHER">Something else</option></select><label htmlFor="checkout-issue-details">Customer note <small>Optional · up to 1,000 characters</small></label><textarea id="checkout-issue-details" value={reportedIssueDetails} onChange={(event) => setReportedIssueDetails(event.target.value)} maxLength={1000} placeholder="Tell the store what happened…"/><small className="archive-note-hint">Saved with the case in your original wording. Don’t include card numbers or security codes.</small><button type="button" className="archive-scenario-button" onClick={() => count ? pay(reportedIssueType === "DUPLICATE_SUBMISSION" ? "duplicate" : "decline") : setError("Add an item to your bag first.")}>Run selected scenario <span>↗</span></button></div>
+      </div><aside className="archive-checkout"><div className="archive-checkout-top"><span>YOUR BAG</span><span>{count} {count === 1 ? "ITEM" : "ITEMS"}</span></div><div className="archive-subtotal"><span>Subtotal</span><strong>{money(total)}</strong></div>{paypalConfig?.configured && sdkReady ? <div className="archive-paypal"><div id="paypal-button-container"/><small>PayPal Sandbox · Buyer approval popup</small></div> : <><MotionButton className="archive-pay-button" state={busy ? "loading" : result === "success" ? "success" : error ? "error" : "idle"} onClick={() => pay("success")} disabled={count === 0}>{count ? "Continue to simulated checkout" : "Add an item to continue"}<span>↗</span></MotionButton><small className="archive-sim-note">SIMULATED CHECKOUT · NO PAYMENT IS TAKEN</small></>}<a className="archive-help-link" href="/report-problem">Order help / request a return</a></aside></div></section>
+
+      <footer className="archive-footer"><a className="archive-brand" href="#top">little things <small>SUPPLY CO.</small></a><nav aria-label="Footer navigation"><a href="#shop">Shop</a><a href="#story">Our story</a><a href="/report-problem">Order help</a><a href="/admin">Merchant desk</a></nav><span>{paypalConfig?.configured ? "PAYPAL SANDBOX" : "FICTIONAL STORE · SIMULATED CHECKOUT"}</span></footer>
     </main>
   );
 }
 
 function ProductCard({ product, index, quantity, onAdd }: { product: Product; index: number; quantity: number; onAdd: () => void }) {
   return (
-    <article className="product-card">
-      <div className="product-visual" style={{ backgroundColor: product.color }}>
-        <span className="product-number">0{index + 1}</span>
-        <span className={`product-art art-${product.id}`}>{product.icon}</span>
-        <span className="visual-spark">✳</span>
-        <button className="quick-add" onClick={onAdd} aria-label={`Add ${product.name} to bag`}>
-          {quantity ? `+ ${quantity} IN BAG` : "+ ADD TO BAG"}
-        </button>
+    <article className="archive-product-card">
+      <div className={`archive-product-image product-${product.id}`} style={{backgroundImage:"url('/images/everyday-archive-products.png')"}} role="img" aria-label={product.name}>
+        <span className="archive-product-index">{String(index + 1).padStart(2,"0")}</span>
+        <button className="archive-add-button" onClick={onAdd} aria-label={`Add ${product.name} to bag`}><span aria-hidden="true">{quantity ? `+${quantity}` : "+"}</span>{quantity ? " IN BAG" : " ADD TO BAG"}</button>
       </div>
-      <div className="product-meta">
-        <div>
-          <p className="product-category">{product.category}</p>
-          <h3>{product.name}</h3>
-          <p className="product-description">{product.description}</p>
-        </div>
-        <strong>{money(product.price)}</strong>
-      </div>
+      <div className="archive-product-meta"><p>{product.category}</p><div><h3>{product.name}</h3><strong>{money(product.price)}</strong></div><small>{product.description}</small></div>
     </article>
   );
 }
+
+function ArchiveBagIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l1 13H4L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>}
+function ArchiveSearchIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m15.5 15.5 4.2 4.2"/></svg>}
