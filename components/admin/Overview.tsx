@@ -7,7 +7,7 @@ export const Overview = memo(function Overview({ data, loading, error, events, u
   data: DemoState | null; loading: boolean; error: string; events: FeedEvent[]; updating: boolean; onReset: () => void;
 }) {
   return <section className="pp-screen pp-overview-screen" id="overview">
-    <div className="pp-hero"><div className="pp-title"><h1>Good morning, merchant.</h1><p>Here’s what’s happening with your store today.</p></div><div className="pp-hero-meta"><span>Today <b>{new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date())}</b></span><span className="pp-status-live"><i/> Live <small>(Simulated data)</small></span></div></div>
+    <div className="pp-hero"><div className="pp-title"><h1>Store overview</h1><p>Payment activity, stock protection, and recent orders.</p></div><div className="pp-hero-meta"><span>Today <b>{new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date())}</b></span><span className="pp-status-live"><i/> Refreshes every 15 seconds <small>(Simulated data)</small></span></div></div>
     {error && <div className="pp-error" role="alert">{error}</div>}
     <div className="pp-demo-note"><Icon name="info"/><p><b>Demo workspace</b> &nbsp; Fictional orders, payments, incidents, and inventory. Stored in {data?.storage === "neon-postgres" ? "Neon Postgres" : "server memory"}.</p><button onClick={onReset} disabled={updating}><Icon name="refresh"/> Reset demo</button></div>
     <section className="pp-stats" aria-label="Store metrics">

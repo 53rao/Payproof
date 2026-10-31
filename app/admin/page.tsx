@@ -57,6 +57,12 @@ export default function AdminPage() {
     finally { setLoading(false); }
   }, []);
   useEffect(() => { void refresh(); setPresenterMode(new URLSearchParams(window.location.search).get("presenter") === "1"); }, [refresh]);
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [refresh]);
   const feedEvents = useMemo(() => !data ? [] : data.orders.map((order) => ({
     kind: "Payments" as const,
     title: order.status === "FAILED" ? "Payment failed" : order.status === "PENDING" || order.status === "PROCESSING" ? "Payment pending" : "Payment captured",
