@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
 import { getDatabase } from "@/db/client";
 import { getOwnerCase } from "@/lib/customer-case-store";
-import { getCaseSnapshot } from "@/lib/case-assistant";
+import { getCaseSnapshot, hasSavedCustomerReplyDraft } from "@/lib/case-assistant";
 import { containsProhibitedPaymentData } from "@/lib/privacy";
 
 type Context = { params: Promise<{ caseId: string }> };
@@ -12,7 +12,8 @@ export async function GET(_request: Request, { params }: Context) {
     const { caseId } = await params;
     const [record, snapshot] = await Promise.all([getOwnerCase(caseId), getCaseSnapshot(caseId)]);
     if (!record || !snapshot) return NextResponse.json({ error: "Case not found." }, { status: 404, headers: { "Cache-Control": "no-store" } });
-    return NextResponse.json({ case: record, snapshot }, { headers: { "Cache-Control": "no-store" } });
+    const canCloseReview = await hasSavedCustomerReplyDraft(caseId);
+    return NextResponse.json({ case: record, snapshot, canCloseReview }, { headers: { "Cache-Control": "no-store" } });
   } catch { return NextResponse.json({ error: "Case records could not be loaded." }, { status: 500, headers: { "Cache-Control": "no-store" } }); }
 }
 

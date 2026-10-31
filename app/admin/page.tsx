@@ -21,8 +21,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState("");
-  const [presenterMode, setPresenterMode] = useState(false);
-  const [presenterStep, setPresenterStep] = useState(0);
   const counterValues = useRef<Record<string, number>>({});
   const { contextSafe } = useGSAP({ scope: rootRef });
 
@@ -56,7 +54,7 @@ export default function AdminPage() {
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load the demo ledger."); }
     finally { setLoading(false); }
   }, []);
-  useEffect(() => { void refresh(); setPresenterMode(new URLSearchParams(window.location.search).get("presenter") === "1"); }, [refresh]);
+  useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
     const timer = window.setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
@@ -75,12 +73,6 @@ export default function AdminPage() {
   const failedOrders = data?.orders.filter((order) => order.status === "FAILED").length ?? 0;
   const totalOrders = data?.orders.length ?? 0;
   const failedRate = totalOrders ? Math.round((failedOrders / totalOrders) * 100) : 0;
-  const refreshWithMotion = useCallback(contextSafe(async () => {
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) gsap.to(".pp-icon-button", { rotation: 360, duration: 0.5, ease: "power2.inOut" });
-    await refresh();
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) gsap.set(".pp-icon-button", { rotation: 0 });
-  }), [contextSafe, refresh]);
-
   const toggleProtection = useCallback(contextSafe(async () => {
     if (!data || updating) return;
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) gsap.fromTo(".pp-toggle", { scale: 0.94 }, { scale: 1, duration: 0.42, ease: "elastic.out(1, 0.55)" });
@@ -94,19 +86,13 @@ export default function AdminPage() {
     const handleKeyDown = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      if (event.key === "p" || event.key === "P") {
-        setPresenterMode((prev) => !prev);
-      } else if (event.key === "t" || event.key === "T") {
+      if (event.key === "t" || event.key === "T") {
         void toggleProtection();
-      } else if (event.key === "ArrowRight" || event.key === "]" || event.key === "j") {
-        if (presenterMode) setPresenterStep((step) => Math.min(3, step + 1));
-      } else if (event.key === "ArrowLeft" || event.key === "[" || event.key === "k") {
-        if (presenterMode) setPresenterStep((step) => Math.max(0, step - 1));
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [presenterMode, toggleProtection]);
+  }, [toggleProtection]);
   const reset = useCallback(contextSafe(async () => {
     if (updating) return;
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) gsap.to(".pp-content", { opacity: 0.82, duration: 0.16 });
@@ -124,11 +110,10 @@ export default function AdminPage() {
   return <main ref={rootRef} className="pp-shell">
     <SectionRail data={data}/>
     <div className="pp-app">
-      <DashboardHeader data={data} onRefresh={refreshWithMotion} onSignOut={signOut}/>
-      {presenterMode && <section className="pp-presenter-bar" aria-label="Demo presentation controls"><div><b>Walkthrough</b><span>{["The simulated storefront", "Payment outcome and stock protection", "Review the merchant case", "Prepare an evidence packet"][presenterStep]}</span></div><div className="pp-presenter-controls"><span>{presenterStep + 1} / 4 · SIMULATED</span><button type="button" onClick={() => setPresenterStep((step) => Math.max(0, step - 1))} disabled={presenterStep === 0}>Previous</button><button type="button" onClick={() => setPresenterStep((step) => Math.min(3, step + 1))} disabled={presenterStep === 3}>Next</button><button type="button" onClick={() => { setPresenterMode(false); window.history.replaceState(null, "", "/admin"); }}>Exit</button></div></section>}
+      <DashboardHeader data={data} updating={updating} onReset={() => void reset()} onSignOut={signOut}/>
       <div className="pp-workspace">
         <div className="pp-content">
-          <Overview data={data} loading={loading} error={error} events={feedEvents} updating={updating} onReset={() => void reset()}/>
+          <Overview data={data} loading={loading} error={error} events={feedEvents}/>
           <PaymentEvents data={data} failedRate={failedRate} failedOrders={failedOrders} totalOrders={totalOrders} totalStock={totalStock} updating={updating} onToggle={() => void toggleProtection()}/>
           <OrderManagement data={data} loading={loading} totalOrders={totalOrders}/>
           <InventorySnapshot data={data} loading={loading}/>

@@ -39,6 +39,8 @@ export default function CaseDetailClient({ caseId }: { caseId: string }) {
   const [customerDraftId, setCustomerDraftId] = useState("");
   const [customerDraftReviewed, setCustomerDraftReviewed] = useState(false);
   const [customerDraftSaving, setCustomerDraftSaving] = useState(false);
+  const [customerDraftSaved, setCustomerDraftSaved] = useState(false);
+  const [closingReview, setClosingReview] = useState(false);
   const [customerDraftSources, setCustomerDraftSources] = useState<string[]>([]);
   const [responseReport, setResponseReport] = useState("");
   const [reportPrepared, setReportPrepared] = useState(false);
@@ -99,6 +101,7 @@ export default function CaseDetailClient({ caseId }: { caseId: string }) {
         if (active) {
           setRecord(data.case);
           setSnapshot(data.snapshot);
+          setCustomerDraftSaved(Boolean(data.canCloseReview));
           setResponseReport(data.case.report?.body ?? "");
           setReportPrepared(Boolean(data.case.report?.body));
         }
@@ -143,6 +146,7 @@ export default function CaseDetailClient({ caseId }: { caseId: string }) {
       if (!response.ok) throw new Error(data.error ?? "A reply draft could not be prepared.");
       setCustomerDraft(data.draft.body);
       setCustomerDraftId(data.draft.id);
+      setCustomerDraftSaved(false);
       setCustomerDraftReviewed(false);
       setCustomerDraftSources([]);
       setNotice("Reply draft ready. Review and edit it before copying.");
@@ -195,9 +199,22 @@ export default function CaseDetailClient({ caseId }: { caseId: string }) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "The customer reply draft could not be saved.");
       setCustomerDraft(data.draft.body);
+      setCustomerDraftSaved(true);
       setNotice("Customer reply draft saved. It remains unsent.");
     } catch (cause) { setError(cause instanceof Error ? cause.message : "The customer reply draft could not be saved."); }
     finally { setCustomerDraftSaving(false); }
+  }
+  async function closeReview() {
+    if (!record || record.status === "CLOSED" || !customerDraftSaved || closingReview) return;
+    setClosingReview(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/owner/cases/" + encodeURIComponent(caseId) + "/close", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "The review could not be closed.");
+      setRecord((current) => current ? { ...current, status: "CLOSED" } : current);
+      setNotice("Review closed. The case remains available in the case queue.");
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "The review could not be closed."); }
+    finally { setClosingReview(false); }
   }
   function revealSource(id: string) {
     setFocusedSource(id);
@@ -279,6 +296,7 @@ export default function CaseDetailClient({ caseId }: { caseId: string }) {
     <div className="pp-owner-container">
       <nav className="pp-owner-breadcrumb" aria-label="Breadcrumb"><Link href="/admin">Merchant desk</Link><span>/</span><Link href="/owner/cases">Cases</Link><span>/</span><b>{caseId}</b></nav>
       <section className="pp-case-head pp-compact-case-head"><div><h1>{issueTitle}</h1><p><span>{caseId}</span><span>Order {snapshot.orderId}</span><strong>{money(snapshot.order.total)}</strong></p></div><div className="pp-case-badges"><span className="pp-case-status">{record.status.toLowerCase()}</span>{record.simulated && <span className="pp-case-sim">DEMO · SIMULATED</span>}<button className="pp-evidence-toggle" type="button" onClick={toggleEvidence} aria-expanded={showEvidence}>Evidence <span>{sources.length}</span></button></div></section>
+      <div className="pp-case-close-review"><div><b>{record.status === "CLOSED" ? "Review closed" : "Review status"}</b><p>{record.status === "CLOSED" ? "This case is closed. Its records remain available for reference." : customerDraftSaved ? "Your customer reply draft is saved and this review can now be closed." : "Save a customer reply draft to enable closing this review."}</p></div><button type="button" onClick={() => void closeReview()} disabled={!customerDraftSaved || record.status === "CLOSED" || closingReview}>{closingReview ? "Closing review…" : record.status === "CLOSED" ? "Review closed" : "Close review"}</button></div>
 
       {snapshot.order.status.toLowerCase() === "failed" && <details className="pp-case-winback"><summary>Recover this sale <small>Owner-approved · simulated checkout</small></summary><p>Create a fresh checkout for the same order items. This does not retry the original payment or send anything to the customer.</p><button type="button" onClick={() => void createRecoveryLink()} disabled={recoveryBusy}>{recoveryBusy ? "Creating link…" : recoveryLink ? "Create a new link" : "Create recovery link"}</button>{recoveryLink && <div className="pp-case-recovery-link"><input aria-label="Simulated recovery link" readOnly value={recoveryLink}/><button type="button" onClick={() => void copyRecoveryLink()}>Copy</button><a href={recoveryLink} target="_blank" rel="noreferrer">Preview</a><small>Expires in 7 days · checkout is simulated</small></div>}</details>}
 
@@ -297,7 +315,7 @@ export default function CaseDetailClient({ caseId }: { caseId: string }) {
 
       {mobileEvidenceOpen && <button className="pp-evidence-backdrop" aria-label="Close evidence panel" onClick={() => setMobileEvidenceOpen(false)} />}
 
-      {customerDraft && <section className="pp-case-draft-card"><div className="pp-case-section-heading"><div><h2>Customer reply draft</h2><p>Review and edit before copying. Nothing is sent.</p></div><span className="pp-case-draft-badge">DRAFT</span></div><textarea aria-label="Edit customer reply draft" value={customerDraft} onChange={(event) => { setCustomerDraft(event.target.value); setCustomerDraftReviewed(false); }} maxLength={1800}/>{customerDraftSources.length > 0 && <details><summary>Show records used</summary><div>{customerDraftSources.map((id) => { const source = sources.find((item) => item.id === id); return source ? <button key={id} type="button" onClick={() => revealSource(id)}>{source.label} ↗</button> : null; })}</div></details>}<div className="pp-case-response-actions"><button type="button" onClick={() => void saveCustomerReplyDraft()} disabled={customerDraftSaving}>{customerDraftSaving ? "Saving…" : "Save draft"}</button></div><label className="pp-case-review-check"><input type="checkbox" checked={customerDraftReviewed} onChange={(event) => setCustomerDraftReviewed(event.target.checked)}/> I reviewed this reply and its wording.</label><button type="button" className="pp-case-primary-button" disabled={!customerDraftReviewed} onClick={() => void copyReviewedReply()}>Copy reviewed reply</button></section>}
+      {customerDraft && <section className="pp-case-draft-card"><div className="pp-case-section-heading"><div><h2>Customer reply draft</h2><p>Review and edit before copying. Nothing is sent.</p></div><span className="pp-case-draft-badge">DRAFT</span></div><textarea aria-label="Edit customer reply draft" value={customerDraft} onChange={(event) => { setCustomerDraft(event.target.value); setCustomerDraftSaved(false); setCustomerDraftReviewed(false); }} maxLength={1800}/>{customerDraftSources.length > 0 && <details><summary>Show records used</summary><div>{customerDraftSources.map((id) => { const source = sources.find((item) => item.id === id); return source ? <button key={id} type="button" onClick={() => revealSource(id)}>{source.label} ↗</button> : null; })}</div></details>}<div className="pp-case-response-actions"><button type="button" onClick={() => void saveCustomerReplyDraft()} disabled={customerDraftSaving}>{customerDraftSaving ? "Saving…" : "Save draft"}</button>{customerDraftSaved && <span role="status">Saved</span>}</div><label className="pp-case-review-check"><input type="checkbox" checked={customerDraftReviewed} onChange={(event) => setCustomerDraftReviewed(event.target.checked)}/> I reviewed this reply and its wording.</label><button type="button" className="pp-case-primary-button" disabled={!customerDraftReviewed} onClick={() => void copyReviewedReply()}>Copy reviewed reply</button></section>}
 
       {showEvidence && <section id="case-evidence" className="pp-case-evidence-panel"><div className="pp-case-section-heading"><div><h2>Evidence behind this case</h2><p>Source, time, and the exact stored details. Owner notes are not independently verified.</p></div><button type="button" className="pp-case-text-action" onClick={() => setFocusedSource("")}>{focusedSource ? "Show all sources" : sources.length + " sources"}</button></div>
         <div className="pp-case-evidence-records">{visibleSources.map((source) => <details key={source.id} id={"case-source-" + source.id} open={focusedSource === source.id}><summary><span><b>{source.label}</b><small>{sourceState(source)}</small></span><time>{date(source.occurredAt)}</time></summary><p>{source.detail}</p></details>)}</div>

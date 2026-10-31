@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
-import { updateDraft } from "@/lib/case-assistant";
+import { markCustomerReplyDraftSaved, updateDraft } from "@/lib/case-assistant";
 
 type Context = { params: Promise<{ caseId: string; draftId: string }> };
 
@@ -16,6 +16,7 @@ export async function PATCH(request: Request, { params }: Context) {
     if (result.status === "missing") return NextResponse.json({ error: "This draft was not found for the selected case." }, { status: 404 });
     if (result.status === "approved") return NextResponse.json({ error: "An approved simulated reply can no longer be edited." }, { status: 409 });
     if (result.status === "invalid") return NextResponse.json({ error: "Reply text cannot be empty." }, { status: 400 });
+    if (result.draft.kind === "customer_status_update") await markCustomerReplyDraftSaved(caseId, draftId);
     return NextResponse.json({ draft: result.draft }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "The edited reply could not be saved." }, { status: 500 });
