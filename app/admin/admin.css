@@ -94,3 +94,10 @@ html:has(.pp-shell){scroll-snap-type:y mandatory;scroll-padding-top:72px}
 @media(min-width:1101px){.pp-stats{grid-template-columns:repeat(5,minmax(0,1fr))}}
 @media(min-width:761px) and (max-width:1100px){.pp-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:760px){.pp-presentation-link{display:none}.pp-presenter-bar{top:62px;align-items:flex-start;flex-direction:column;padding:9px 14px}.pp-presenter-bar>div:first-child{align-items:flex-start;flex-direction:column;gap:3px}.pp-presenter-controls{width:100%;flex-wrap:wrap}.pp-stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* The payment and stock panels should end with their content, not reserve a full screen of blank space. */
+#events.pp-screen{min-height:auto}
+
+#orders.pp-screen{min-height:auto}
+
+#orders .pp-secondary-grid{margin-bottom:20px}#orders.pp-screen{padding-bottom:14px}#inventory.pp-screen{padding-top:20px}

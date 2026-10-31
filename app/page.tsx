@@ -76,11 +76,12 @@ export default function Home() {
   // Keyboard shortcut: Press 'd' to test quick decline
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
+      const target = e.target;
+      if (e.defaultPrevented || !(target instanceof Element) || target.closest("input, textarea, select, button, a, [contenteditable='true']")) return;
       if (e.key === "d" || e.key === "D") {
+        const items = count ? cartEntries.map(([id, quantity]) => ({ id, quantity })) : [{ id: products[0].id, quantity: 1 }];
         if (!count) change(products[0].id, 1);
-        void pay("decline");
+        void pay("decline", items);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -141,7 +142,7 @@ export default function Home() {
     }
   }, [sdkReady, count, total]);
 
-  async function pay(outcome: "success" | "decline" | "duplicate" = "success") {
+  async function pay(outcome: "success" | "decline" | "duplicate" = "success", items: { id: string; quantity: number }[] = cartEntries.map(([id, quantity]) => ({ id, quantity }))) {
     if (busyRef.current) return;
     busyRef.current = true;
     if (!idempotencyRef.current) idempotencyRef.current = crypto.randomUUID();
@@ -150,7 +151,7 @@ export default function Home() {
       const response = await fetch("/api/checkout/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ items: cartEntries.map(([id, quantity]) => ({ id, quantity })), idempotencyKey: idempotencyRef.current }),
+        body: JSON.stringify({ items, idempotencyKey: idempotencyRef.current }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Checkout failed.");
