@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./storefront.css";
 export const metadata: Metadata = {
-  title: "PayProof — Merchant Desk",
-  description: "A fictional storefront and private merchant workspace for reviewing simulated payment incidents, customer complaints, and case evidence.",
+  title: "Little Things Supply Co. — The Everyday Archive",
+  description: "Useful, beautiful objects for home, work, travel, and slower days.",
   icons: {
     icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
     apple: "/icon.svg",
