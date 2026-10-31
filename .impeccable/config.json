@@ -1,0 +1,20 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "design-system-font",
+        "value": "dm mono",
+        "createdAt": "2026-10-31T09:43:08.865Z",
+        "reason": "The storefront intentionally uses its existing storefront type system; DESIGN.md scopes its type guidance to /admin."
+      },
+      {
+        "rule": "design-system-font",
+        "value": "playfair display",
+        "createdAt": "2026-10-31T09:43:09.298Z",
+        "reason": "The storefront intentionally uses its existing storefront type system; DESIGN.md scopes its type guidance to /admin."
+      }
+    ]
+  }
+}
