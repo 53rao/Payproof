@@ -114,12 +114,6 @@ export async function captureDemoOrder(orderId: string, outcome: "success" | "de
   return { payment, state: await getDemoState() };
 }
 
-export function findMemoryCustomerOrder(accessTokenHash: string, orderId?: string) {
-  const order = ledger().orders.find((item) => item.customerAccessTokenHash === accessTokenHash && (!orderId || item.id === orderId));
-  if (!order) return null;
-  return { id: order.id, amount: order.amount, status: order.status, createdAt: order.createdAt, items: order.items.map((item) => ({ id: item.id, quantity: item.quantity })) };
-}
-
 export function listMemoryCustomerOrders(accessTokenHashes: string[]) {
   const hashes = new Set(accessTokenHashes);
   return ledger().orders.filter((item) => item.customerAccessTokenHash && hashes.has(item.customerAccessTokenHash)).map((order) => ({ id: order.id, amount: order.amount, status: order.status, createdAt: order.createdAt, items: order.items.map((item) => ({ id: item.id, quantity: item.quantity })) }));

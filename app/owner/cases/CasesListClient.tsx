@@ -6,7 +6,6 @@ import "./owner-cases.css";
 type Complaint = { id: string; type: string; originalText: string; createdAt: string } | null;
 type CaseRow = { id: string; orderId: string; type: string; status: string; cause: string; createdAt: string; simulated: boolean; orderStatus?: string; total?: number; suggestedNextStep?: string; complaint: Complaint };
 const labels: Record<string,string> = { ITEM_NOT_RECEIVED: "Item not received", ITEM_DIFFERENT: "Item different from description", PAYMENT_ISSUE: "Payment issue", OTHER: "Other" };
-const date = (value: string) => new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 export default function CasesListClient() {
   const [cases, setCases] = useState<CaseRow[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [filter, setFilter] = useState("All cases");
   useEffect(() => { let active = true; void fetch("/api/owner/cases", { cache: "no-store" }).then(async (response) => { const data = await response.json(); if (!response.ok) throw new Error(data.error ?? "Cases could not be loaded."); if (active) setCases(data.cases ?? []); }).catch((cause) => { if (active) setError(cause instanceof Error ? cause.message : "Cases could not be loaded."); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, []);
@@ -27,5 +26,3 @@ export default function CasesListClient() {
   </main>;
 }
 function OwnerShield(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 19 6v5c0 5-3 8-7 10-4-2-7-5-7-10V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>}
-function ComplaintIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M8 9h8M8 12h5"/></svg>}
-function IncidentIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 21 19H3L12 3Z"/><path d="M12 9v4m0 3h.01"/></svg>}

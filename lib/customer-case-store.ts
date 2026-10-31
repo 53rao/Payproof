@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getDatabase } from "@/db/client";
-import { createMemoryComplaint, findMemoryCustomerOrder, listMemoryCustomerOrders, memoryComplaints } from "@/lib/demo-store";
+import { createMemoryComplaint, listMemoryCustomerOrders, memoryComplaints } from "@/lib/demo-store";
 
 export const complaintTypes = ["ITEM_NOT_RECEIVED", "ITEM_DIFFERENT", "PAYMENT_ISSUE", "OTHER"] as const;
 export type ComplaintType = typeof complaintTypes[number];

@@ -34,7 +34,6 @@ export default function AdminPage() {
       gsap.to(counter, { value: target, duration: 0.58, ease: "power2.out", snap: { value: 1 }, onUpdate: () => { element.textContent = String(Math.round(counter.value)); } });
     });
     gsap.fromTo(".pp-stat", { y: 4 }, { y: 0, duration: 0.35, stagger: 0.035, ease: "power2.out", clearProps: "transform" });
-    gsap.fromTo(".pp-chart-bars span", { scaleY: 0, transformOrigin: "bottom" }, { scaleY: 1, duration: 0.48, stagger: 0.035, ease: "power2.out", clearProps: "transform" });
     gsap.fromTo(".pp-meter i", { scaleX: 0, transformOrigin: "left" }, { scaleX: 1, duration: 0.42, stagger: 0.045, ease: "power2.out", clearProps: "transform" });
   }, { scope: rootRef, dependencies: [data?.counters.paymentEvents, data?.counters.failedPayments, data?.counters.recoveredStock, data?.counters.stuckStock, data?.protected, data?.orders.length, data?.stock], revertOnUpdate: true });
 
