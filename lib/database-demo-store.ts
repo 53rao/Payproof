@@ -33,7 +33,7 @@ export async function seedDatabase() {
   if (!db) throw new Error("DATABASE_URL is required to seed the database.");
 
   await db.product.createMany({
-    data: products.map((product) => ({ id: product.id, name: product.name, priceCents: product.price * 100, initialStock, availableStock: initialStock, simulated: true })),
+    data: products.map((product) => ({ id: product.id, name: product.name, priceCents: product.price * 100, initialStock, availableStock: initialStock, simulated: true, merchantId: ["mug", "tote", "candle"].includes(product.id) ? "northstar" : "fieldform" })),
     skipDuplicates: true,
   });
   await db.protectionSetting.upsert({ where: { id: 1 }, create: { id: 1, enabled: true }, update: {} });

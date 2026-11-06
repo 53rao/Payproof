@@ -253,7 +253,7 @@ export async function draftCustomerReply(snapshot: CaseSnapshot, kind: DraftKind
     ? `We’re reviewing the payment status for order ${snapshot.orderId}. Please check your payment method or contact us if you need help. We’ll share an update when we have more information.`
     : `Could you confirm the order reference ${snapshot.orderId} and let us know what happened during checkout? Please do not send full payment card details, passwords, or security codes.`);
   const record = await createDraft(snapshot.id, kind, body);
-  return { draft: record, generatedBy: generated ? "groq" as const : "template" as const, model: generated?.model };
+  return { draft: record, sourceIds: snapshot.sources.map((source) => source.id), generatedBy: generated ? "groq" as const : "template" as const, model: generated?.model };
 }
 
 export async function draftMerchantResponse(snapshot: CaseSnapshot) {

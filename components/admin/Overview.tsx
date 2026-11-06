@@ -2,6 +2,7 @@ import { memo } from "react";
 import type { DemoState, FeedEvent, IconName } from "./types";
 import { when } from "./format";
 import { Icon } from "./Icon";
+import { MerchantAnalytics } from "./MerchantAnalytics";
 
 export const Overview = memo(function Overview({ data, loading, error, events }: {
   data: DemoState | null; loading: boolean; error: string; events: FeedEvent[];
@@ -16,6 +17,7 @@ export const Overview = memo(function Overview({ data, loading, error, events }:
       <StatCard metric="held" label="Still reserved" value={data?.counters.stuckStock ?? null} foot="Units in failed orders" icon="shield" loading={loading}/>
       <StatCard metric="recovered" label="Recovered sales" value={data?.counters.recoveredRevenue ?? null} foot={`${data?.counters.recoveredOrders ?? 0} completed recovery orders · simulated`} icon="chart" loading={loading} prefix="$"/>
     </section>
+    <MerchantAnalytics/>
     <section className="pp-overview-activity" aria-label="Latest activity">
       <div className="pp-overview-activity-head"><div><h2>Latest activity</h2><p>Recent payment records from this workspace</p></div><a href="#events">Open payment events <Icon name="arrow"/></a></div>
       {loading && !data ? <div className="pp-overview-activity-list pp-activity-skeleton" aria-label="Loading recent activity"><span/><span/><span/><span/><span/><span/></div> : events.length ? <div className="pp-overview-activity-list">{events.slice(0, 6).map((event) => <a className="pp-overview-activity-row" href="#orders" key={`${event.ref}-${event.kind}`}><span className={`pp-overview-activity-icon ${event.failed ? "failed" : ""}`}><Icon name="receipt"/></span><span><b>{event.title}</b><small>{event.ref} · {event.detail}</small></span><time>{when(event.time)}</time><Icon name="chevron"/></a>)}</div> : <div className="pp-overview-activity-empty">No payment activity yet. Run a simulated checkout to start the ledger.</div>}
