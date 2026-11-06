@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { products } from "@/lib/products";
+import { INITIAL_DEMO_STOCK } from "@/lib/inventory";
 import { paymentProvider } from "@/lib/payment-provider";
 import { getDatabase } from "@/db/client";
 
 type CartLine = { id: string; quantity: number };
-const initialStock = 12;
+const initialStock = INITIAL_DEMO_STOCK;
 const cartFingerprint = (items: CartLine[]) => JSON.stringify([...items].sort((a, b) => a.id.localeCompare(b.id)));
 const isUniqueConflict = (error: unknown) => error && typeof error === "object" && "code" in error && error.code === "P2002";
 const runtime = globalThis as typeof globalThis & {
@@ -201,7 +202,7 @@ export async function getDatabaseDemoState() {
     committedStock,
     orders: recentOrders.map((order) => {
       const event = latestEvents.get(order.id);
-      return { id: order.id, amount: order.totalCents / 100, status: order.status, createdAt: order.createdAt.toISOString(), items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), issue: event?.issue ?? undefined, debug_id: event?.debugId ?? undefined, recoveredFromOrderId: order.recoveredFromOrderId ?? undefined };
+      return { id: order.id, amount: order.totalCents / 100, status: order.status, createdAt: order.createdAt.toISOString(), items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), issue: event?.issue ?? undefined, debug_id: event?.debugId ?? undefined, recoveredFromOrderId: order.recoveredFromOrderId ?? undefined, simulated: order.simulated };
     }),
     cases: recentCases.map((item) => {
       const event = latestEvents.get(item.orderId);
@@ -243,7 +244,7 @@ export async function createDatabaseOrder(items: CartLine[], idempotencyKey: str
           id: providerOrder.id, idempotencyKey, cartFingerprint: fingerprint, totalCents, status: "PENDING", simulated: isSimulated, customerAccessTokenHash, recoveredFromOrderId,
           items: { create: items.map((item) => ({ productId: item.id, quantity: item.quantity, unitPriceCents: catalogRows.find((product) => product.id === item.id)!.priceCents })) },
           reservations: { create: items.map((item) => ({ productId: item.id, quantity: item.quantity, status: "HELD", expiresAt: new Date(Date.now() + 15 * 60 * 1000) })) },
-          paymentEvents: { create: { type: "ORDER_CREATED", paymentStatus: "PENDING", rawJson: { simulated: isSimulated, provider: paymentProvider.isRealProvider() ? "PayPal_Sandbox" : "MockProvider" } } },
+          paymentEvents: { create: { type: "ORDER_CREATED", paymentStatus: "PENDING", rawJson: { simulated: isSimulated, provider: paymentProvider.isRealProvider() ? "Braintree_Sandbox" : "MockProvider" } } },
         },
       });
       return { created: { id: providerOrder.id, amount: totalCents / 100, items, simulated: isSimulated } } as const;
@@ -263,10 +264,10 @@ async function readExistingOrder(db: NonNullable<ReturnType<typeof getDatabase>>
   const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } });
   if (!order) throw new Error("Idempotent order could not be loaded.");
   if (order.cartFingerprint !== fingerprint) throw new Error("This checkout key was already used for a different cart.");
-  return { id: order.id, amount: order.totalCents / 100, items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), simulated: true as const, repeated: true };
+  return { id: order.id, amount: order.totalCents / 100, items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), simulated: order.simulated, repeated: true };
 }
 
-export async function captureDatabaseOrder(orderId: string, outcome: "success" | "decline" | "duplicate", issueType?: string, issueDetails?: string) {
+export async function captureDatabaseOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string) {
   const db = getDatabase();
   if (!db) throw new Error("DATABASE_URL is not configured.");
   await releaseExpiredReservations(true);
@@ -282,14 +283,15 @@ export async function captureDatabaseOrder(orderId: string, outcome: "success" |
   }
 
   let payment;
-  try { payment = await paymentProvider.captureOrder(orderId, outcome); }
+  try { payment = await paymentProvider.captureOrder(orderId, outcome, paymentMethodNonce); }
   catch (error) { await db.order.update({ where: { id: orderId }, data: { status: "PENDING" } }); throw error; }
   const nextStatus = payment.status === "COMPLETED" ? "PAID" : "FAILED";
   try {
     await db.$transaction(async (tx) => {
       await tx.order.update({ where: { id: orderId }, data: { status: nextStatus } });
       const eventFacts = { ...(payment.raw as Record<string, unknown>), ...(outcome !== "success" ? { customerReportedIssue: { type: issueType ?? "OTHER", originalText: issueDetails ?? "" } } : {}) };
-      await tx.paymentEvent.create({ data: { orderId, type: "CAPTURE_RESULT", paymentStatus: payment.status, issue: payment.issue, debugId: payment.debug_id, rawJson: eventFacts as Prisma.InputJsonValue, simulated: true } });
+      const simulated = orderId.startsWith("SIM-") || orderId.startsWith("DEMO-") || ("simulated" in payment.raw && payment.raw.simulated === true);
+      await tx.paymentEvent.create({ data: { orderId, type: "CAPTURE_RESULT", paymentStatus: payment.status, issue: payment.issue, debugId: payment.debug_id, rawJson: eventFacts as Prisma.InputJsonValue, simulated } });
       if (payment.status === "COMPLETED") {
         await tx.stockReservation.updateMany({ where: { orderId, status: "HELD" }, data: { status: "COMMITTED" } });
         return;
@@ -298,7 +300,7 @@ export async function captureDatabaseOrder(orderId: string, outcome: "success" |
       const held = await tx.stockReservation.findMany({ where: { orderId, status: "HELD" } });
       await tx.case.create({
         data: {
-          id: `CASE-${randomUUID().slice(0, 8).toUpperCase()}`, orderId, type: "PAYMENT_FAILURE", cause: payment.issue ?? "Payment failed", uncertainty: "Simulated provider result; this does not establish customer intent.", status: "OPEN", simulated: true,
+          id: `CASE-${randomUUID().slice(0, 8).toUpperCase()}`, orderId, type: "PAYMENT_FAILURE", cause: payment.issue ?? "Payment failed", uncertainty: simulated ? "Simulated provider result; this does not establish customer intent." : "A Braintree Sandbox payment failed; this does not establish customer intent.", status: "OPEN", simulated,
           items: { create: [
             { kind: "order", referenceId: orderId, completeness: "PRESENT", payload: { orderId } },
             { kind: "payment_event", referenceId: orderId, completeness: "PRESENT", payload: { issue: payment.issue ?? null, debug_id: payment.debug_id ?? null } },

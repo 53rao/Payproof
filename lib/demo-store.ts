@@ -1,17 +1,18 @@
 import { products } from "@/lib/products";
+import { INITIAL_DEMO_STOCK } from "@/lib/inventory";
 import { paymentProvider, type PaymentResult } from "@/lib/payment-provider";
 import { getDatabase } from "@/db/client";
 import { captureDatabaseOrder, createDatabaseOrder, getDatabaseDemoState, resetDatabaseDemo, setDatabaseProtection } from "@/lib/database-demo-store";
 
 type OrderState = "PENDING" | "PROCESSING" | "PAID" | "FAILED";
 type ReservationState = "HELD" | "RELEASED" | "COMMITTED";
-type Order = { id: string; amount: number; items: { id: string; quantity: number }[]; status: OrderState; createdAt: string; payment?: PaymentResult; issue?: string; debug_id?: string; customerAccessTokenHash?: string; recoveredFromOrderId?: string; checkoutIssueType?: string; checkoutIssueDetails?: string };
+type Order = { id: string; amount: number; items: { id: string; quantity: number }[]; status: OrderState; createdAt: string; simulated: boolean; payment?: PaymentResult; issue?: string; debug_id?: string; customerAccessTokenHash?: string; recoveredFromOrderId?: string; checkoutIssueType?: string; checkoutIssueDetails?: string };
 type Reservation = { orderId: string; productId: string; quantity: number; state: ReservationState; expiresAt: number };
 type CaseRecord = { id: string; orderId: string; issue: string; debug_id?: string; createdAt: string; status: "OPEN" | "CLOSED"; type?: string };
 type Ledger = { idempotency: Record<string, { orderId: string; cart: string }>; orders: Order[]; reservations: Reservation[]; cases: CaseRecord[]; stock: Record<string, number>; protected: boolean; paymentEvents: number; failedPayments: number; recoveredStock: number; stuckStock: number };
-const initialStock = () => Object.fromEntries(products.map((product) => [product.id, 12]));
+const initialStock = () => Object.fromEntries(products.map((product) => [product.id, INITIAL_DEMO_STOCK]));
 const freshLedger = (): Ledger => ({ idempotency: {}, orders: [], reservations: [], cases: [], stock: initialStock(), protected: true, paymentEvents: 0, failedPayments: 0, recoveredStock: 0, stuckStock: 0 });
-const globalStore = globalThis as typeof globalThis & { payproofDemoLedger?: Ledger; payproofCreateLocks?: Map<string, { cart: string; promise: Promise<{ id: string; amount: number; items: { id: string; quantity: number }[]; simulated: true; repeated?: boolean }> }> };
+const globalStore = globalThis as typeof globalThis & { payproofDemoLedger?: Ledger; payproofCreateLocks?: Map<string, { cart: string; promise: Promise<{ id: string; amount: number; items: { id: string; quantity: number }[]; simulated: boolean; repeated?: boolean }> }> };
 export type CustomerComplaintRecord = { id: string; caseId: string; orderId: string; type: string; originalText: string; createdAt: string; simulated: true };
 const complaintStore = globalThis as typeof globalThis & { payproofCustomerComplaints?: CustomerComplaintRecord[] };
 export const memoryComplaints = () => complaintStore.payproofCustomerComplaints ??= [];
@@ -58,7 +59,7 @@ export async function createDemoOrder(items: { id: string; quantity: number }[],
   if (existing) {
     if (existing.cart !== cart) throw new Error("This checkout key was already used for a different cart.");
     const order = state.orders.find((candidate) => candidate.id === existing.orderId);
-    if (order) { order.customerAccessTokenHash = customerAccessTokenHash; return { id: order.id, amount: order.amount, items: order.items, simulated: true as const, repeated: true }; }
+    if (order) { order.customerAccessTokenHash = customerAccessTokenHash; return { id: order.id, amount: order.amount, items: order.items, simulated: order.simulated, repeated: true }; }
   }
   const locks = globalStore.payproofCreateLocks ??= new Map();
   const inFlight = locks.get(idempotencyKey);
@@ -73,7 +74,7 @@ export async function createDemoOrder(items: { id: string; quantity: number }[],
     try {
       const providerOrder = await paymentProvider.createOrder({ items, idempotencyKey });
       const isSimulated = !paymentProvider.isRealProvider();
-      const order: Order = { ...providerOrder, items, status: "PENDING", createdAt: new Date().toISOString(), customerAccessTokenHash, recoveredFromOrderId };
+      const order: Order = { ...providerOrder, items, status: "PENDING", createdAt: new Date().toISOString(), simulated: !paymentProvider.isRealProvider(), customerAccessTokenHash, recoveredFromOrderId };
       state.orders.push(order); state.idempotency[idempotencyKey] = { orderId: order.id, cart };
       for (const item of items) state.reservations.push({ orderId: order.id, productId: item.id, quantity: item.quantity, state: "HELD", expiresAt: Date.now() + 15 * 60 * 1000 });
       state.paymentEvents += 1;
@@ -86,8 +87,8 @@ export async function createDemoOrder(items: { id: string; quantity: number }[],
   locks.set(idempotencyKey, { cart, promise });
   try { return await promise; } finally { locks.delete(idempotencyKey); }
 }
-export async function captureDemoOrder(orderId: string, outcome: "success" | "decline" | "duplicate", issueType?: string, issueDetails?: string) {
-  if (getDatabase()) return captureDatabaseOrder(orderId, outcome, issueType, issueDetails);
+export async function captureDemoOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string) {
+  if (getDatabase()) return captureDatabaseOrder(orderId, outcome, paymentMethodNonce, issueType, issueDetails);
   await getDemoState();
   const state = ledger(); const order = state.orders.find((candidate) => candidate.id === orderId);
   if (!order) throw new Error("Order not found in the simulated ledger.");
@@ -95,7 +96,7 @@ export async function captureDemoOrder(orderId: string, outcome: "success" | "de
   if (order.status !== "PENDING") throw new Error("This simulated order is already being processed.");
   order.status = "PROCESSING";
   let payment: PaymentResult;
-  try { payment = await paymentProvider.captureOrder(orderId, outcome); }
+  try { payment = await paymentProvider.captureOrder(orderId, outcome, paymentMethodNonce); }
   catch (error) { order.status = "PENDING"; throw error; }
   order.payment = payment;
   if (payment.status === "FAILED") { order.checkoutIssueType = issueType; order.checkoutIssueDetails = issueDetails; }

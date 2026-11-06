@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     if (!items.length) return NextResponse.json({ error: "Your bag is empty." }, { status: 400 });
     const accessTokenHash = createHash("sha256").update(idempotencyKey).digest("hex");
     const order = await createDemoOrder(items, idempotencyKey, accessTokenHash);
-    const response = NextResponse.json({ ...order, items, simulated: true }, { headers: { "Cache-Control": "no-store" } });
+    const response = NextResponse.json({ ...order, items }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set(`payproof_order_${order.id}`, idempotencyKey, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: 60 * 60 * 24 * 365 });
     return response;
   } catch (error) {

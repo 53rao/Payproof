@@ -20,7 +20,7 @@ export async function createComplaint(accessTokenHash: string, orderId: string, 
   if (!order) return null;
   const caseId = `CASE-${randomUUID().slice(0, 8).toUpperCase()}`;
   const result = await db.$transaction(async (tx) => {
-    const createdCase = await tx.case.create({ data: { id: caseId, orderId, type: "CUSTOMER_COMPLAINT", cause: "Customer submitted a complaint; merchant review is pending.", uncertainty: "The customer's statement is preserved verbatim. Store records may be incomplete; PayPal makes any dispute decision.", status: "OPEN", simulated: true } });
+    const createdCase = await tx.case.create({ data: { id: caseId, orderId, type: "CUSTOMER_COMPLAINT", cause: "Customer submitted a complaint; merchant review is pending.", uncertainty: "The customer's statement is preserved verbatim. Store records may be incomplete; PayProof does not make payment dispute decisions.", status: "OPEN", simulated: true } });
     const complaint = await tx.customerComplaint.create({ data: { orderId, caseId: createdCase.id, type, originalText, simulated: true } });
     await tx.caseItem.create({ data: { caseId, kind: "customer_complaint", referenceId: complaint.id, completeness: "PRESENT", payload: { complaintType: type }, createdAt: complaint.createdAt } });
     return complaint;

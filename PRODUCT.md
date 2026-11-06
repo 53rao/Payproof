@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Customers reporting an order problem and merchants reviewing payment incidents, complaints, and evidence in a simulated PayPal checkout. Merchants need to diagnose incidents, understand what records do and do not establish, and prepare an evidence-backed response.
+Customers reporting an order problem and merchants reviewing payment incidents, complaints, and evidence from a Braintree Sandbox checkout. Merchants need to diagnose incidents, understand what records do and do not establish, and prepare an evidence-backed response.
 
 ## Product Purpose
 
@@ -24,11 +24,11 @@ The web app has a demo storefront at `/`, customer order support at `/report-pro
 
 ## Capabilities and Constraints
 
-- Checkout, payment outcomes, and incident records use a simulated payment provider; no live PayPal transaction is performed.
+- Configured card checkout uses Braintree Sandbox and Hosted Fields; no live transaction is performed. Without Sandbox credentials, the checkout uses an explicitly labeled simulator.
 - Owner pages and case APIs require a signed owner session. Customer complaint access is scoped to orders with an HTTP-only order-access cookie.
 - Customer complaint text is stored verbatim. It is separate from owner-edited report drafts.
 - The evidence assistant can read only case-scoped order, payment, reservation, complaint, and manually entered notice records. AI explanations remain suggestions, not evidence or decisions.
-- There is no verified PayPal dispute notification or evidence-submission integration. Owners may enter notice details manually and copy or download their report for submission through PayPal's appropriate process.
+- There is no connected payment dispute notification or evidence-submission integration. Owners may enter notice details manually and copy or download their report for review.
 - Payment records support investigation but do not establish customer intent or fulfillment.
 - The app can persist its demo ledger to Neon Postgres through Prisma when `DATABASE_URL` is configured.
 
