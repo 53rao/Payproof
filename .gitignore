@@ -1,7 +1,41 @@
-node_modules
-.next
-out
+# Dependencies
+/node_modules/
+
+# Next.js build output
+/.next/
+/out/
+/build/
+/dist/
+
+# Local environment files and secrets
 .env*
 !.env.example
-.vercel
+
+# Vercel deployment metadata
+/.vercel/
+
+# Logs and test output
+*.log
+/coverage/
+/playwright-report/
+/test-results/
+
+# TypeScript build cache
 *.tsbuildinfo
+
+# Local editor and operating-system files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Local tool state
+/.impeccable/hook.cache.json
+/.codex/questions/
+/.codex/
+/.agents/skills/impeccable/
+
+# Local research and integration notes
+/docs/AG_STUDIO_NOTES.md
+/docs/APIMATIC_LOG.md
+/docs/SPIKE_RESULTS.md
