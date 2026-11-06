@@ -14,8 +14,15 @@ export async function POST(request: Request) {
     if (typeof reportedIssueDetails === "string" && containsProhibitedPaymentData(reportedIssueDetails)) return NextResponse.json({ error: "Remove full card numbers, security codes, passwords, and API keys from your note." }, { status: 400 });
     const result = await captureDemoOrder(orderId, outcome as "success" | "decline" | "duplicate", typeof paymentMethodNonce === "string" ? paymentMethodNonce : undefined, reportedIssueType as string | undefined, reportedIssueDetails as string | undefined);
     const raw = result.payment.raw;
+    const origin = result.state.orders.find((order) => order.id === orderId)?.origin ?? "UNKNOWN";
     const isSimulated = orderId.startsWith("SIM-") || orderId.startsWith("DEMO-") || (typeof raw === "object" && raw !== null && "simulated" in raw && (raw as Record<string, unknown>).simulated === true);
-    return NextResponse.json({ payment: { status: result.payment.status, issue: result.payment.issue, debug_id: result.payment.debug_id, transaction_id: "transaction_id" in result.payment ? result.payment.transaction_id : undefined }, simulated: isSimulated }, { headers: { "Cache-Control": "no-store" } });
+    const failed = result.payment.status === "FAILED";
+    const recovery = !failed ? null : origin === "HUMAN"
+      ? { audience: "person", action: "open_order_help", message: "Your payment did not complete. You can contact the store for help or try another payment method." }
+      : origin === "AGENT"
+        ? { audience: "agent", action: "request_alternate_payment_method", message: "Payment failed. Request another payment method; do not retry the same authorization." }
+        : { audience: "unknown", action: "merchant_review", message: "Payment failed and checkout origin is unconfirmed. Merchant review may be needed." };
+    return NextResponse.json({ payment: { status: result.payment.status, issue: result.payment.issue, debug_id: result.payment.debug_id, transaction_id: "transaction_id" in result.payment ? result.payment.transaction_id : undefined }, simulated: isSimulated, origin, recovery }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Could not complete simulated payment." }, { status: 400 });
   }

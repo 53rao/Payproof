@@ -11,7 +11,7 @@ export async function POST(request: Request, { params }: Context) {
     const { caseId } = await params;
     const snapshot = await getCaseSnapshot(caseId);
     if (!snapshot) return NextResponse.json({ error: "Case not found." }, { status: 404 });
-    if (snapshot.order.status !== "failed") return NextResponse.json({ error: "A recovery link is only available for a failed order." }, { status: 409 });
+    if (snapshot.order.status.toLowerCase() !== "failed") return NextResponse.json({ error: "A recovery link is only available for a failed order." }, { status: 409 });
     const token = createRecoveryToken(caseId);
     const url = new URL(`/recover/${encodeURIComponent(token)}`, request.url).toString();
     return NextResponse.json({ url, expiresInDays: 7, simulated: true }, { headers: { "Cache-Control": "no-store" } });

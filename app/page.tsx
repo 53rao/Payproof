@@ -22,6 +22,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [braintreeAvailability, setBraintreeAvailability] = useState<"loading" | "ready" | "unavailable" | "error">("loading");
   const [transactionId, setTransactionId] = useState("");
+  const [humanConfirmed, setHumanConfirmed] = useState(false);
   const busyRef = useRef(false);
   const idempotencyRef = useRef("");
 
@@ -56,7 +57,7 @@ export default function Home() {
       const response = await fetch("/api/checkout/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ items: cartEntries.map(([id, quantity]) => ({ id, quantity })), idempotencyKey: idempotencyRef.current }),
+        body: JSON.stringify({ items: cartEntries.map(([id, quantity]) => ({ id, quantity })), idempotencyKey: idempotencyRef.current, humanConfirmed }),
       });
       const order = await response.json();
       if (!response.ok) throw new Error(order.error ?? "Could not start checkout.");
@@ -93,7 +94,7 @@ export default function Home() {
       const response = await fetch("/api/checkout/create", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ items, idempotencyKey: idempotencyRef.current }),
+        body: JSON.stringify({ items, idempotencyKey: idempotencyRef.current, humanConfirmed }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error ?? "Checkout failed.");
@@ -153,7 +154,7 @@ export default function Home() {
         {error && <p className="archive-error" role="alert">{error}</p>}
         {result && <div className={`archive-result ${result === "success" ? "success" : "failure"}`} role="status"><span>{result === "success" ? "✓" : "!"}</span><div><b>{result === "success" ? "Payment complete" : result === "decline" ? "Payment failed" : result === "duplicate" ? "Duplicate submission detected" : "Reservation expired"}</b><p>{result === "success" ? "Your order is all set. Thanks for stopping by." : `${isRealSandbox ? "BRAINTREE SANDBOX" : "SIMULATED"} · ${resultIssue || "PAYMENT_FAILED"}${transactionId ? ` · transaction ${transactionId}` : debugId ? ` · debug ID ${debugId}` : ""} · No payment was taken.`}</p>{checkout && <><small>Order {checkout.id} · {money(checkout.amount)} · {isRealSandbox ? "BRAINTREE SANDBOX" : "SIMULATED"}</small><a href="/report-problem">Need help with this order? Report a problem ↗</a></>}</div></div>}
         {braintreeAvailability === "unavailable" && <div className="archive-demo-panel"><div className="archive-demo-head"><div><span className="archive-demo-dot"/> DEMO CHECKOUT</div><span className="archive-sim-pill">SIMULATED</span></div><p>Braintree Sandbox credentials aren’t available here. You can still explore the checkout flow with fictional outcomes.</p><label htmlFor="checkout-issue-type">Scenario <small>Choose a simulated outcome</small></label><select id="checkout-issue-type" value={reportedIssueType} onChange={(event) => setReportedIssueType(event.target.value as typeof reportedIssueType)}><option value="PAYMENT_DECLINED">Payment declined</option><option value="DUPLICATE_SUBMISSION">Possible duplicate submission</option><option value="OTHER">Something else</option></select><label htmlFor="checkout-issue-details">Customer note <small>Optional · up to 1,000 characters</small></label><textarea id="checkout-issue-details" value={reportedIssueDetails} onChange={(event) => setReportedIssueDetails(event.target.value)} maxLength={1000} placeholder="Tell the store what happened…"/><small className="archive-note-hint">Saved with the case in your original wording. Don’t include card numbers or security codes.</small><button type="button" className="archive-scenario-button" onClick={() => count ? pay(reportedIssueType === "DUPLICATE_SUBMISSION" ? "duplicate" : "decline") : setError("Add an item to your bag first.")}>Run selected scenario <span>↗</span></button></div>}
-      </div><aside className="archive-checkout"><div className="archive-checkout-top"><span>YOUR BAG</span><span>{count} {count === 1 ? "ITEM" : "ITEMS"}</span></div><div className="archive-subtotal"><span>Subtotal</span><strong>{money(total)}</strong></div><div className="archive-braintree"><BraintreePaymentForm amount={money(total)} disabled={count === 0 || busy} buttonLabel={count ? "Pay with Braintree Sandbox" : "Add an item to continue"} onPaymentMethod={payWithBraintree} onAvailability={setBraintreeAvailability}/></div>{braintreeAvailability === "unavailable" && <><MotionButton className="archive-pay-button" state={busy ? "loading" : result === "success" ? "success" : error ? "error" : "idle"} onClick={() => pay("success")} disabled={count === 0}>{count ? "Continue to simulated checkout" : "Add an item to continue"}<span>↗</span></MotionButton><small className="archive-sim-note">SIMULATED CHECKOUT · NO PAYMENT IS TAKEN</small></>}<a className="archive-help-link" href="/report-problem">Order help / request a return</a></aside></div></section>
+      </div><aside className="archive-checkout"><div className="archive-checkout-top"><span>YOUR BAG</span><span>{count} {count === 1 ? "ITEM" : "ITEMS"}</span></div><div className="archive-subtotal"><span>Subtotal</span><strong>{money(total)}</strong></div><label className="archive-human-confirm"><input type="checkbox" checked={humanConfirmed} onChange={(event) => setHumanConfirmed(event.target.checked)}/><span>I confirm I’m completing this purchase as a person.</span></label><small className="archive-human-origin-note">If left unchecked, origin is recorded as unknown.</small><div className="archive-braintree"><BraintreePaymentForm amount={money(total)} disabled={count === 0 || busy} buttonLabel={count ? "Pay with Braintree Sandbox" : "Add an item to continue"} onPaymentMethod={payWithBraintree} onAvailability={setBraintreeAvailability}/></div>{braintreeAvailability === "unavailable" && <><MotionButton className="archive-pay-button" state={busy ? "loading" : result === "success" ? "success" : error ? "error" : "idle"} onClick={() => pay("success")} disabled={count === 0}>{count ? "Continue to simulated checkout" : "Add an item to continue"}<span>↗</span></MotionButton><small className="archive-sim-note">SIMULATED CHECKOUT · NO PAYMENT IS TAKEN</small></>}<a className="archive-help-link" href="/report-problem">Order help / request a return</a></aside></div></section>
 
       <footer className="archive-footer"><a className="archive-brand" href="#top">little things <small>SUPPLY CO.</small></a><nav aria-label="Footer navigation"><a href="#shop">Shop</a><a href="#story">Our story</a><a href="/report-problem">Order help</a><a href="/admin">Merchant desk</a></nav><span>{braintreeAvailability === "ready" ? "BRAINTREE SANDBOX" : "FICTIONAL STORE · SIMULATED CHECKOUT"}</span></footer>
     </main>

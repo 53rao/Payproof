@@ -33,7 +33,7 @@ Open [http://localhost:3000](http://localhost:3000). Braintree Sandbox credentia
 
 ## Current limitations
 
-Without `DATABASE_URL`, the demo ledger remains process-memory only and resets when the server restarts. To enable Neon persistence, put your Neon connection string in `.env.local`, then run:
+Without `DATABASE_URL`, the demo ledger remains process-memory only and resets when the server restarts. To enable Neon persistence locally, put your Neon connection string in the project-root `.env` file before running Prisma CLI commands (Next.js runtime can also read `.env.local`):
 
 ```sh
 npm run db:push
@@ -41,6 +41,8 @@ npm run db:seed
 ```
 
 With `DATABASE_URL` configured, the API uses Prisma transactions for order creation, idempotency, stock reservations, capture results, incident records, protection settings, and reset. The seed script fills each table with repeatable fictional demo data. Braintree Sandbox is the only connected payment provider; its merchant ID, public key, and private key stay server-side, while a short-lived client token configures Hosted Fields in the browser. Simulated checkout is used only when Sandbox credentials are unavailable.
+
+Authenticated agent checkouts use `POST /api/connector/checkout` with `Authorization: Bearer $CONNECTOR_SHARED_SECRET` and JSON `{ "idempotencyKey": "...", "items": [{ "id": "mug", "quantity": 1 }], "paymentMethodNonce": "..." }`. This endpoint requires persistent database storage and configured Braintree Sandbox credentials. Failed agent payments release reservations immediately and return a machine-readable alternate-payment action; each failure also creates a case flagged for human review. Storefront buyers are labeled `HUMAN` only after explicitly confirming the purchase is being completed by a person. Other orders default to `UNKNOWN`.
 
 The Prisma schema lives in `prisma/schema.prisma`. For rapid prototyping use `npm run db:push`; for versioned schema changes use `npm run db:migrate` and commit the generated Prisma migration.
 

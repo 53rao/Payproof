@@ -32,13 +32,13 @@ export async function getRecoveryOrder(caseId: string) {
   if (db) {
     const item = await db.case.findUnique({ where: { id: caseId }, include: { order: { include: { items: { include: { product: true } } } } } });
     if (!item) return null;
-    return { caseId, orderId: item.orderId, status: item.order.status, simulated: item.order.simulated, total: item.order.totalCents / 100, items: item.order.items.map((row) => ({ id: row.productId, name: row.product.name, quantity: row.quantity, unitPrice: row.unitPriceCents / 100 })) };
+    return { caseId, orderId: item.orderId, status: item.order.status, simulated: item.order.simulated, origin: item.order.checkoutOrigin, total: item.order.totalCents / 100, items: item.order.items.map((row) => ({ id: row.productId, name: row.product.name, quantity: row.quantity, unitPrice: row.unitPriceCents / 100 })) };
   }
   const state = await getDemoState();
   const caseRecord = state.cases.find((item) => item.id === caseId);
   const order = caseRecord && state.orders.find((item) => item.id === caseRecord.orderId);
   if (!caseRecord || !order) return null;
-  return { caseId, orderId: order.id, status: order.status, simulated: order.simulated, total: order.amount, items: order.items.map((row) => { const product = products.find((item) => item.id === row.id); return { id: row.id, name: product?.name ?? "Store item", quantity: row.quantity, unitPrice: product?.price ?? 0 }; }) };
+  return { caseId, orderId: order.id, status: order.status, simulated: order.simulated, origin: order.origin, total: order.amount, items: order.items.map((row) => { const product = products.find((item) => item.id === row.id); return { id: row.id, name: product?.name ?? "Store item", quantity: row.quantity, unitPrice: product?.price ?? 0 }; }) };
 }
 
 export async function createRecoveryOrder(token: string, caseId: string) {
@@ -46,6 +46,6 @@ export async function createRecoveryOrder(token: string, caseId: string) {
   if (!original || original.status !== "FAILED") return null;
   const idempotency = `RECOVERY-${createHash("sha256").update(token).digest("hex")}`;
   const customerTokenHash = createHash("sha256").update(idempotency).digest("hex");
-  const order = await createDemoOrder(original.items.map(({ id, quantity }) => ({ id, quantity })), idempotency, customerTokenHash, original.orderId);
+  const order = await createDemoOrder(original.items.map(({ id, quantity }) => ({ id, quantity })), idempotency, customerTokenHash, original.orderId, "HUMAN");
   return { ...order, originalOrderId: original.orderId, customerToken: idempotency };
 }

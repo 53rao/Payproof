@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { create as createClient, type ClientInstance } from "braintree-web/client";
 import { create as createHostedFields, type HostedFieldsInstance } from "braintree-web/hosted-fields";
 
@@ -20,20 +20,30 @@ export function BraintreePaymentForm({
   onAvailability: (availability: "ready" | "unavailable" | "error") => void;
 }) {
   const hostedFieldsRef = useRef<HostedFieldsInstance | null>(null);
+  const initializationRef = useRef<Promise<void> | null>(null);
+  const teardownRef = useRef<Promise<void> | null>(null);
   const onPaymentMethodRef = useRef(onPaymentMethod);
   const onAvailabilityRef = useRef(onAvailability);
   const [availability, setAvailability] = useState<Availability>("loading");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const fieldId = useId().replaceAll(":", "");
 
   onPaymentMethodRef.current = onPaymentMethod;
   onAvailabilityRef.current = onAvailability;
 
   useEffect(() => {
     let active = true;
-    let clientInstance: ClientInstance | undefined;
-    void (async () => {
+    const previousInitialization = initializationRef.current;
+    const selectors = { number: `#${fieldId}-number`, expirationDate: `#${fieldId}-expiration`, cvv: `#${fieldId}-cvv` };
+    const clearFields = () => {
+      for (const selector of Object.values(selectors)) document.querySelector(selector)?.replaceChildren();
+    };
+    const initialization = (async () => {
       try {
+        if (previousInitialization) await previousInitialization.catch(() => undefined);
+        if (teardownRef.current) await teardownRef.current.catch(() => undefined);
+        if (!active) return;
         const response = await fetch("/api/braintree/client-token", { cache: "no-store" });
         const config = await response.json() as { configured?: boolean; clientToken?: string; error?: string };
         if (!response.ok) throw new Error(typeof config.error === "string" ? config.error : "Braintree Sandbox could not issue a client token.");
@@ -44,7 +54,8 @@ export function BraintreePaymentForm({
           }
           return;
         }
-        clientInstance = await createClient({ authorization: config.clientToken });
+        const clientInstance: ClientInstance = await createClient({ authorization: config.clientToken });
+        if (!active) return;
         const instance = await createHostedFields({
           client: clientInstance,
           styles: {
@@ -53,13 +64,14 @@ export function BraintreePaymentForm({
             "input.invalid": { color: "#b42318" },
           },
           fields: {
-            number: { container: "#braintree-card-number", placeholder: "Card number" },
-            expirationDate: { container: "#braintree-card-expiration", placeholder: "MM / YY" },
-            cvv: { container: "#braintree-card-cvv", placeholder: "CVV" },
+            number: { container: selectors.number, placeholder: "Card number" },
+            expirationDate: { container: selectors.expirationDate, placeholder: "MM / YY" },
+            cvv: { container: selectors.cvv, placeholder: "CVV" },
           },
         });
         if (!active) {
-          await instance.teardown();
+          teardownRef.current = instance.teardown().then(clearFields);
+          await teardownRef.current;
           return;
         }
         hostedFieldsRef.current = instance;
@@ -74,13 +86,14 @@ export function BraintreePaymentForm({
         }
       }
     })();
+    initializationRef.current = initialization;
     return () => {
       active = false;
       const instance = hostedFieldsRef.current;
       hostedFieldsRef.current = null;
-      if (instance) void instance.teardown();
+      if (instance) teardownRef.current = instance.teardown().then(clearFields);
     };
-  }, []);
+  }, [fieldId]);
 
   async function submitPayment() {
     const instance = hostedFieldsRef.current;
@@ -103,11 +116,11 @@ export function BraintreePaymentForm({
       {availability === "unavailable" && <p className="braintree-status" role="status">Braintree Sandbox credentials are not configured.</p>}
       {availability === "error" && <p className="braintree-status" role="alert">{message}</p>}
       <div className="braintree-fields" hidden={availability === "unavailable" || availability === "error"}>
-        <label htmlFor="braintree-card-number">Card number</label>
-        <div id="braintree-card-number" className="braintree-hosted-field" />
+        <label htmlFor={`${fieldId}-number`}>Card number</label>
+        <div id={`${fieldId}-number`} className="braintree-hosted-field" />
         <div className="braintree-card-row">
-          <div><label htmlFor="braintree-card-expiration">Expiry date</label><div id="braintree-card-expiration" className="braintree-hosted-field" /></div>
-          <div><label htmlFor="braintree-card-cvv">Security code</label><div id="braintree-card-cvv" className="braintree-hosted-field" /></div>
+          <div><label htmlFor={`${fieldId}-expiration`}>Expiry date</label><div id={`${fieldId}-expiration`} className="braintree-hosted-field" /></div>
+          <div><label htmlFor={`${fieldId}-cvv`}>Security code</label><div id={`${fieldId}-cvv`} className="braintree-hosted-field" /></div>
         </div>
       </div>
       {availability === "ready" && <>
