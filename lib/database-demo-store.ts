@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { products } from "@/lib/products";
+import { INITIAL_DEMO_STOCK } from "@/lib/inventory";
 import { paymentProvider } from "@/lib/payment-provider";
 import { getDatabase } from "@/db/client";
 
 type CartLine = { id: string; quantity: number };
-const initialStock = 12;
+const initialStock = INITIAL_DEMO_STOCK;
 const cartFingerprint = (items: CartLine[]) => JSON.stringify([...items].sort((a, b) => a.id.localeCompare(b.id)));
 const isUniqueConflict = (error: unknown) => error && typeof error === "object" && "code" in error && error.code === "P2002";
 const runtime = globalThis as typeof globalThis & {
@@ -32,7 +33,7 @@ export async function seedDatabase() {
   if (!db) throw new Error("DATABASE_URL is required to seed the database.");
 
   await db.product.createMany({
-    data: products.map((product) => ({ id: product.id, name: product.name, priceCents: product.price * 100, initialStock, availableStock: initialStock, simulated: true })),
+    data: products.map((product) => ({ id: product.id, name: product.name, priceCents: product.price * 100, initialStock, availableStock: initialStock, simulated: true, merchantId: ["mug", "tote", "candle"].includes(product.id) ? "northstar" : "fieldform" })),
     skipDuplicates: true,
   });
   await db.protectionSetting.upsert({ where: { id: 1 }, create: { id: 1, enabled: true }, update: {} });
@@ -159,11 +160,32 @@ async function releaseExpiredReservations(force = false) {
   catch (error) { if (runtime.payproofExpirySweep?.promise === sweep) runtime.payproofExpirySweep = undefined; throw error; }
 }
 
+async function releaseConfirmedFailureReservations() {
+  const db = getDatabase();
+  if (!db) return;
+  const heldRows = await db.stockReservation.findMany({
+    where: { status: "HELD", order: { status: "FAILED" } },
+    select: { orderId: true, productId: true, quantity: true },
+  });
+  const grouped = new Map<string, typeof heldRows>();
+  for (const row of heldRows) grouped.set(row.orderId, [...(grouped.get(row.orderId) ?? []), row]);
+  for (const [orderId, reservations] of grouped) {
+    await db.$transaction(async (tx) => {
+      const claimed = await tx.stockReservation.updateMany({ where: { orderId, status: "HELD" }, data: { status: "RELEASED" } });
+      if (!claimed.count) return;
+      for (const reservation of reservations) await tx.product.update({ where: { id: reservation.productId }, data: { availableStock: { increment: reservation.quantity } } });
+      await tx.caseItem.updateMany({ where: { referenceId: orderId, kind: "stock_reservation" }, data: { completeness: "RELEASED", payload: { units: reservations.reduce((sum, row) => sum + row.quantity, 0), note: "Released after the payment provider confirmed failure." } } });
+      await tx.paymentEvent.create({ data: { orderId, type: "RESERVATION_RELEASED_AFTER_FAILURE", paymentStatus: "FAILED", issue: "RESERVATION_RELEASED", rawJson: { source: "confirmed_payment_failure", releasedUnits: reservations.reduce((sum, row) => sum + row.quantity, 0) } } });
+    });
+  }
+}
+
 export async function getDatabaseDemoState() {
   const db = getDatabase();
   if (!db) throw new Error("DATABASE_URL is not configured.");
   await ensureSeeded();
   await releaseExpiredReservations();
+  await releaseConfirmedFailureReservations();
   const [productRows, settings, recentOrders, recentCases, reservationTotals, paymentCount, failedCount, openCaseCount, stuckTotals, releasedTotals, recoveredTotals] = await Promise.all([
     db.product.findMany(),
     db.protectionSetting.findUnique({ where: { id: 1 } }),
@@ -201,17 +223,17 @@ export async function getDatabaseDemoState() {
     committedStock,
     orders: recentOrders.map((order) => {
       const event = latestEvents.get(order.id);
-      return { id: order.id, amount: order.totalCents / 100, status: order.status, createdAt: order.createdAt.toISOString(), items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), issue: event?.issue ?? undefined, debug_id: event?.debugId ?? undefined, recoveredFromOrderId: order.recoveredFromOrderId ?? undefined };
+      return { id: order.id, amount: order.totalCents / 100, status: order.status, createdAt: order.createdAt.toISOString(), items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), issue: event?.issue ?? undefined, debug_id: event?.debugId ?? undefined, recoveredFromOrderId: order.recoveredFromOrderId ?? undefined, simulated: order.simulated, origin: order.checkoutOrigin };
     }),
     cases: recentCases.map((item) => {
       const event = latestEvents.get(item.orderId);
-      return { id: item.id, orderId: item.orderId, issue: event?.issue ?? item.cause, debug_id: event?.debugId ?? undefined, createdAt: item.createdAt.toISOString(), status: item.status };
+      return { id: item.id, orderId: item.orderId, issue: event?.issue ?? item.cause, debug_id: event?.debugId ?? undefined, createdAt: item.createdAt.toISOString(), status: item.status, agentHandled: item.agentHandled, humanReviewRequired: item.humanReviewRequired };
     }),
     counters: { paymentEvents: paymentCount, failedPayments: failedCount, recoveredStock: releasedStock, stuckStock, openCases: openCaseCount, recoveredRevenue: (recoveredTotals._sum.totalCents ?? 0) / 100, recoveredOrders: recoveredTotals._count._all },
   };
 }
 
-export async function createDatabaseOrder(items: CartLine[], idempotencyKey: string, customerAccessTokenHash: string, recoveredFromOrderId?: string) {
+export async function createDatabaseOrder(items: CartLine[], idempotencyKey: string, customerAccessTokenHash: string, recoveredFromOrderId?: string, origin: "AGENT" | "HUMAN" | "UNKNOWN" = "UNKNOWN") {
   const db = getDatabase();
   if (!db) throw new Error("DATABASE_URL is not configured.");
   await ensureSeeded();
@@ -219,8 +241,9 @@ export async function createDatabaseOrder(items: CartLine[], idempotencyKey: str
   const fingerprint = cartFingerprint(items);
   const existing = await db.order.findUnique({ where: { idempotencyKey } });
   if (existing) {
+    if (existing.checkoutOrigin !== origin) throw new Error("This checkout key was already used for a different checkout origin.");
     await db.order.update({ where: { id: existing.id }, data: { customerAccessTokenHash } });
-    return readExistingOrder(db, existing.id, fingerprint);
+    return readExistingOrder(db, existing.id, fingerprint, origin);
   }
   const catalogRows = await db.product.findMany({ where: { id: { in: items.map((item) => item.id) } } });
   if (catalogRows.length !== items.length) throw new Error("The cart contains an unknown product.");
@@ -240,36 +263,39 @@ export async function createDatabaseOrder(items: CartLine[], idempotencyKey: str
       }
       await tx.order.create({
         data: {
-          id: providerOrder.id, idempotencyKey, cartFingerprint: fingerprint, totalCents, status: "PENDING", simulated: isSimulated, customerAccessTokenHash, recoveredFromOrderId,
+          id: providerOrder.id, idempotencyKey, cartFingerprint: fingerprint, totalCents, status: "PENDING", simulated: isSimulated, customerAccessTokenHash, recoveredFromOrderId, checkoutOrigin: origin,
           items: { create: items.map((item) => ({ productId: item.id, quantity: item.quantity, unitPriceCents: catalogRows.find((product) => product.id === item.id)!.priceCents })) },
           reservations: { create: items.map((item) => ({ productId: item.id, quantity: item.quantity, status: "HELD", expiresAt: new Date(Date.now() + 15 * 60 * 1000) })) },
-          paymentEvents: { create: { type: "ORDER_CREATED", paymentStatus: "PENDING", rawJson: { simulated: isSimulated, provider: paymentProvider.isRealProvider() ? "PayPal_Sandbox" : "MockProvider" } } },
+          paymentEvents: { create: { type: "ORDER_CREATED", paymentStatus: "PENDING", rawJson: { simulated: isSimulated, provider: paymentProvider.isRealProvider() ? "Braintree_Sandbox" : "MockProvider" } } },
         },
       });
-      return { created: { id: providerOrder.id, amount: totalCents / 100, items, simulated: isSimulated } } as const;
+      return { created: { id: providerOrder.id, amount: totalCents / 100, items, simulated: isSimulated, origin } } as const;
     });
-    if ("existingOrderId" in result && result.existingOrderId) return readExistingOrder(db, result.existingOrderId, fingerprint);
+    if ("existingOrderId" in result && result.existingOrderId) return readExistingOrder(db, result.existingOrderId, fingerprint, origin);
     return result.created;
   } catch (error) {
     if (isUniqueConflict(error)) {
       const winner = await db.order.findUnique({ where: { idempotencyKey } });
-      if (winner) return readExistingOrder(db, winner.id, fingerprint);
+      if (winner) return readExistingOrder(db, winner.id, fingerprint, origin);
     }
     throw error;
   }
 }
 
-async function readExistingOrder(db: NonNullable<ReturnType<typeof getDatabase>>, orderId: string, fingerprint: string) {
+async function readExistingOrder(db: NonNullable<ReturnType<typeof getDatabase>>, orderId: string, fingerprint: string, expectedOrigin?: "AGENT" | "HUMAN" | "UNKNOWN") {
   const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true } });
   if (!order) throw new Error("Idempotent order could not be loaded.");
   if (order.cartFingerprint !== fingerprint) throw new Error("This checkout key was already used for a different cart.");
-  return { id: order.id, amount: order.totalCents / 100, items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), simulated: true as const, repeated: true };
+  if (expectedOrigin && order.checkoutOrigin !== expectedOrigin) throw new Error("This checkout key was already used for a different checkout origin.");
+  return { id: order.id, amount: order.totalCents / 100, items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), simulated: order.simulated, origin: order.checkoutOrigin, repeated: true };
 }
 
-export async function captureDatabaseOrder(orderId: string, outcome: "success" | "decline" | "duplicate", issueType?: string, issueDetails?: string) {
+export async function captureDatabaseOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string) {
   const db = getDatabase();
   if (!db) throw new Error("DATABASE_URL is not configured.");
   await releaseExpiredReservations(true);
+  const orderOrigin = (await db.order.findUnique({ where: { id: orderId }, select: { checkoutOrigin: true } }))?.checkoutOrigin ?? "UNKNOWN";
+  const agentHandled = orderOrigin === "AGENT";
   const claimed = await db.order.updateMany({ where: { id: orderId, status: "PENDING" }, data: { status: "PROCESSING" } });
   if (!claimed.count) {
     const existing = await db.order.findUnique({ where: { id: orderId } });
@@ -282,36 +308,34 @@ export async function captureDatabaseOrder(orderId: string, outcome: "success" |
   }
 
   let payment;
-  try { payment = await paymentProvider.captureOrder(orderId, outcome); }
+  try { payment = await paymentProvider.captureOrder(orderId, outcome, paymentMethodNonce); }
   catch (error) { await db.order.update({ where: { id: orderId }, data: { status: "PENDING" } }); throw error; }
   const nextStatus = payment.status === "COMPLETED" ? "PAID" : "FAILED";
   try {
     await db.$transaction(async (tx) => {
       await tx.order.update({ where: { id: orderId }, data: { status: nextStatus } });
       const eventFacts = { ...(payment.raw as Record<string, unknown>), ...(outcome !== "success" ? { customerReportedIssue: { type: issueType ?? "OTHER", originalText: issueDetails ?? "" } } : {}) };
-      await tx.paymentEvent.create({ data: { orderId, type: "CAPTURE_RESULT", paymentStatus: payment.status, issue: payment.issue, debugId: payment.debug_id, rawJson: eventFacts as Prisma.InputJsonValue, simulated: true } });
+      const simulated = orderId.startsWith("SIM-") || orderId.startsWith("DEMO-") || ("simulated" in payment.raw && payment.raw.simulated === true);
+      await tx.paymentEvent.create({ data: { orderId, type: "CAPTURE_RESULT", paymentStatus: payment.status, issue: payment.issue, debugId: payment.debug_id, rawJson: eventFacts as Prisma.InputJsonValue, simulated } });
       if (payment.status === "COMPLETED") {
         await tx.stockReservation.updateMany({ where: { orderId, status: "HELD" }, data: { status: "COMMITTED" } });
         return;
       }
-      const settings = await tx.protectionSetting.findUnique({ where: { id: 1 } });
       const held = await tx.stockReservation.findMany({ where: { orderId, status: "HELD" } });
       await tx.case.create({
         data: {
-          id: `CASE-${randomUUID().slice(0, 8).toUpperCase()}`, orderId, type: "PAYMENT_FAILURE", cause: payment.issue ?? "Payment failed", uncertainty: "Simulated provider result; this does not establish customer intent.", status: "OPEN", simulated: true,
+          id: `CASE-${randomUUID().slice(0, 8).toUpperCase()}`, orderId, type: "PAYMENT_FAILURE", cause: payment.issue ?? "Payment failed", uncertainty: simulated ? "Simulated provider result; this does not establish customer intent." : "A Braintree Sandbox payment failed; this does not establish customer intent.", status: "OPEN", simulated, agentHandled, humanReviewRequired: agentHandled,
           items: { create: [
             { kind: "order", referenceId: orderId, completeness: "PRESENT", payload: { orderId } },
             { kind: "payment_event", referenceId: orderId, completeness: "PRESENT", payload: { issue: payment.issue ?? null, debug_id: payment.debug_id ?? null } },
             ...(outcome !== "success" ? [{ kind: "checkout_issue_report", referenceId: orderId, completeness: "PRESENT", payload: { issueType: issueType ?? "OTHER", originalText: issueDetails ?? "" } }] : []),
-            { kind: "stock_reservation", referenceId: orderId, completeness: settings?.enabled ? "RELEASED" : "HELD", payload: { units: held.reduce((sum, item) => sum + item.quantity, 0) } },
+            { kind: "stock_reservation", referenceId: orderId, completeness: "RELEASED", payload: { units: held.reduce((sum, item) => sum + item.quantity, 0) } },
             { kind: "fulfillment", completeness: "MISSING", payload: { note: "No fulfillment record is connected in this demo." } },
           ] },
         },
       });
-      if (settings?.enabled) {
-        for (const reservation of held) await tx.product.update({ where: { id: reservation.productId }, data: { availableStock: { increment: reservation.quantity } } });
-        await tx.stockReservation.updateMany({ where: { orderId, status: "HELD" }, data: { status: "RELEASED" } });
-      }
+      for (const reservation of held) await tx.product.update({ where: { id: reservation.productId }, data: { availableStock: { increment: reservation.quantity } } });
+      await tx.stockReservation.updateMany({ where: { orderId, status: "HELD" }, data: { status: "RELEASED" } });
     });
   } catch (error) {
     const current = await db.order.findUnique({ where: { id: orderId }, select: { status: true } });

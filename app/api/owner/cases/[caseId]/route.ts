@@ -37,11 +37,11 @@ export async function PATCH(request: Request, { params }: Context) {
     const saved = await db.evidenceReport.upsert({ where: { caseId }, create: { caseId, body: report }, update: { body: report } });
     let noticeRecord: { id: string; createdAt: Date } | null = null;
     if (manualNotice !== undefined) {
-      const existingNotice = await db.caseItem.findFirst({ where: { caseId, kind: "manual_paypal_notice" }, orderBy: { createdAt: "desc" } });
+      const existingNotice = await db.caseItem.findFirst({ where: { caseId, kind: { in: ["manual_payment_notice", "manual_paypal_notice"] } }, orderBy: { createdAt: "desc" } });
       if (manualNotice.trim()) {
         noticeRecord = existingNotice
           ? await db.caseItem.update({ where: { id: existingNotice.id }, data: { payload: { originalNoticeText: manualNotice }, completeness: "PRESENT" }, select: { id: true, createdAt: true } })
-          : await db.caseItem.create({ data: { caseId, kind: "manual_paypal_notice", completeness: "PRESENT", payload: { originalNoticeText: manualNotice } }, select: { id: true, createdAt: true } });
+          : await db.caseItem.create({ data: { caseId, kind: "manual_payment_notice", completeness: "PRESENT", payload: { originalNoticeText: manualNotice } }, select: { id: true, createdAt: true } });
       } else if (existingNotice) await db.caseItem.delete({ where: { id: existingNotice.id } });
       }
     return NextResponse.json({ report: saved.body, updatedAt: saved.updatedAt.toISOString(), manualNotice: noticeRecord ? { id: noticeRecord.id, createdAt: noticeRecord.createdAt.toISOString(), detail: manualNotice } : null }, { headers: { "Cache-Control": "no-store" } });

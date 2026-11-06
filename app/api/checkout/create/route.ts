@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     const body: unknown = await request.json();
     if (!body || typeof body !== "object" || !Array.isArray((body as { items?: unknown }).items)) return NextResponse.json({ error: "Invalid cart." }, { status: 400 });
-    const { items: rawItems, idempotencyKey } = body as { items: unknown[]; idempotencyKey?: unknown };
+    const { items: rawItems, idempotencyKey, humanConfirmed } = body as { items: unknown[]; idempotencyKey?: unknown; humanConfirmed?: unknown };
     if (typeof idempotencyKey !== "string" || !/^[a-zA-Z0-9-]{16,80}$/.test(idempotencyKey)) return NextResponse.json({ error: "A valid idempotency key is required." }, { status: 400 });
     const items: { id: string; quantity: number }[] = [];
     for (const entry of rawItems) {
@@ -19,8 +19,9 @@ export async function POST(request: Request) {
     }
     if (!items.length) return NextResponse.json({ error: "Your bag is empty." }, { status: 400 });
     const accessTokenHash = createHash("sha256").update(idempotencyKey).digest("hex");
-    const order = await createDemoOrder(items, idempotencyKey, accessTokenHash);
-    const response = NextResponse.json({ ...order, items, simulated: true }, { headers: { "Cache-Control": "no-store" } });
+    if (humanConfirmed !== undefined && typeof humanConfirmed !== "boolean") return NextResponse.json({ error: "humanConfirmed must be true or false." }, { status: 400 });
+    const order = await createDemoOrder(items, idempotencyKey, accessTokenHash, undefined, humanConfirmed === true ? "HUMAN" : "UNKNOWN");
+    const response = NextResponse.json({ ...order, items }, { headers: { "Cache-Control": "no-store" } });
     response.cookies.set(`payproof_order_${order.id}`, idempotencyKey, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: 60 * 60 * 24 * 365 });
     return response;
   } catch (error) {

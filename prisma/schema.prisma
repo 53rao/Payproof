@@ -14,10 +14,20 @@ model Product {
   initialStock   Int               @default(12) @map("initial_stock")
   availableStock Int               @default(12) @map("available_stock")
   simulated      Boolean           @default(true)
+  merchantId     String            @default("northstar") @map("merchant_id")
+  merchant       Merchant          @relation(fields: [merchantId], references: [id])
   orderItems     OrderItem[]
   reservations   StockReservation[]
 
   @@map("products")
+}
+
+model Merchant {
+  id        String    @id
+  name      String
+  simulated Boolean   @default(true)
+  products  Product[]
+  @@map("merchants")
 }
 
 model Owner {
@@ -37,6 +47,7 @@ model Order {
   totalCents        Int                @map("total_cents")
   status            OrderStatus        @default(PENDING)
   simulated         Boolean            @default(true)
+  checkoutOrigin    CheckoutOrigin     @default(UNKNOWN) @map("checkout_origin")
   customerAccessTokenHash String?       @map("customer_access_token_hash")
   recoveredFromOrderId String?          @map("recovered_from_order_id")
   createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -98,6 +109,8 @@ model Case {
   cause       String
   uncertainty String
   simulated   Boolean     @default(true)
+  agentHandled Boolean    @default(false) @map("agent_handled")
+  humanReviewRequired Boolean @default(false) @map("human_review_required")
   createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cases_order_id_orders_id_fk")
   items       CaseItem[]
@@ -201,4 +214,12 @@ enum CaseStatus {
   CLOSED
 
   @@map("case_status")
+}
+
+enum CheckoutOrigin {
+  AGENT
+  HUMAN
+  UNKNOWN
+
+  @@map("checkout_origin")
 }

@@ -1,5 +1,5 @@
-export type DemoCase = { id: string; orderId: string; issue: string; debug_id?: string; createdAt: string; status: "OPEN" };
-export type DemoOrder = { id: string; amount: number; status: string; createdAt: string; issue?: string; debug_id?: string; items: { id: string; quantity: number }[]; recoveredFromOrderId?: string };
+export type DemoCase = { id: string; orderId: string; issue: string; debug_id?: string; createdAt: string; status: "OPEN"; agentHandled?: boolean; humanReviewRequired?: boolean };
+export type DemoOrder = { id: string; amount: number; status: string; createdAt: string; issue?: string; debug_id?: string; items: { id: string; quantity: number }[]; recoveredFromOrderId?: string; origin?: "AGENT" | "HUMAN" | "UNKNOWN" };
 export type DemoState = {
   simulated: true;
   storage: string;
