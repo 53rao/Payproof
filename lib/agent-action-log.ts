@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@prisma/client";
 import { getDatabase } from "@/db/client";
 
-export type AgentActionType = "RESERVATION_RELEASED" | "CASE_ESCALATED" | "RECOVERY_SUPPRESSED";
+export type AgentActionType = "CASE_ESCALATED" | "RECOVERY_SUPPRESSED";
 
 export async function logAgentAction(
   type: AgentActionType,
@@ -20,6 +20,7 @@ export async function getRecentAgentActions(limit = 20) {
   if (!db) return [];
   const take = Math.max(1, Math.min(100, Math.floor(limit)));
   const entries = await db.agentActionLog.findMany({
+    where: { type: { in: ["CASE_ESCALATED", "RECOVERY_SUPPRESSED"] } },
     take,
     orderBy: { createdAt: "desc" },
     include: { merchant: { select: { id: true, name: true } } },

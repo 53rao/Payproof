@@ -2,7 +2,6 @@ import { getDatabase, closeDatabase } from "@/db/client";
 import { hashPassword } from "@/lib/auth";
 import { DEMO_MERCHANTS, PRODUCT_TO_MERCHANT_ID } from "@/lib/merchants";
 import { products } from "@/lib/products";
-import { INITIAL_DEMO_STOCK } from "@/lib/inventory";
 
 export async function seedMerchantAuth() {
   const db = getDatabase();
@@ -39,8 +38,6 @@ export async function seedMerchantAuth() {
         id: product.id,
         name: product.name,
         priceCents: product.price * 100,
-        initialStock: INITIAL_DEMO_STOCK,
-        availableStock: INITIAL_DEMO_STOCK,
         simulated: true,
         merchantId,
       },

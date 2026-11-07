@@ -132,12 +132,12 @@ export default function CaseDetailClient({ caseId, merchantName, origin, waitFor
     const normalized = prompt.trim().toLowerCase();
     if (normalized === "what do the connected records confirm?" || normalized === "what information or records are missing?") {
       const relevant = normalized.startsWith("what do")
-        ? sources.filter((source) => source.label === "Order record" || source.label === "Payment event" || source.label === "Payment result" || source.label.startsWith("Stock reservation"))
+        ? sources.filter((source) => source.label === "Order record" || source.label === "Payment event" || source.label === "Payment result")
         : sources.filter((source) => source.completeness === "MISSING");
       const summary = normalized.startsWith("what do")
         ? "The order record shows " + snapshot?.order.status.toLowerCase() + " for " + caseId + ". " + (paymentSource?.detail ?? "No payment event is connected to this case.") + "."
         : relevant.length ? "These records are unavailable in the connected workspace: " + relevant.map((source) => source.label.toLowerCase()).join(", ") + "." : "No sources are marked unavailable in the records currently attached to this case.";
-      setExchange((items) => [...items, { question: prompt, showEvidence: false, explanation: { summary, likely_cause: snapshot?.cause ?? "Not established by the available records.", uncertainty: snapshot?.uncertainty ?? "Some case details may be unavailable.", evidence: relevant.map((source) => ({ sourceId: source.id, label: source.label, finding: source.detail })), next_steps: relevant.length && normalized.startsWith("what information") ? ["Check whether the source system has a record that can be attached to this case."] : ["Check the payment processor details and reservation state before replying."], generatedBy: "template" } }]);
+      setExchange((items) => [...items, { question: prompt, showEvidence: false, explanation: { summary, likely_cause: snapshot?.cause ?? "Not established by the available records.", uncertainty: snapshot?.uncertainty ?? "Some case details may be unavailable.", evidence: relevant.map((source) => ({ sourceId: source.id, label: source.label, finding: source.detail })), next_steps: relevant.length && normalized.startsWith("what information") ? ["Check whether the source system has a record that can be attached to this case."] : ["Review the payment processor details before replying."], generatedBy: "template" } }]);
       setQuestion("");
       return;
     }

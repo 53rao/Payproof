@@ -31,7 +31,7 @@ export function MerchantCaseBreakdown() {
     {merchants.map((merchant) => <div className="pp-assist-merchant" key={merchant.id}>
       <a href={`/owner/cases?merchantId=${encodeURIComponent(merchant.id)}`}>{merchant.name}</a>
       <span>Total open cases: {merchant.openCases ?? 0}</span>
-      <span>Cases needing action: {merchant.casesNeedingAction ?? 0} human failures without a recovery link sent</span>
+      <span>Open human payment failures requiring merchant review: {merchant.casesNeedingAction ?? 0}</span>
       <b>{merchant.casesNeedingAction ?? 0} need action</b>
     </div>)}
   </div>;

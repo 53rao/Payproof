@@ -1553,21 +1553,48 @@ html {
   letter-spacing: 0.06em;
 }
 
-.pp-simulation-controls {
+.pp-simulation-controls,
+.pp-simulation-config {
   display: flex;
   align-items: center;
   gap: 12px;
   margin: 18px 0;
 }
 
-.pp-simulation-controls label {
+.pp-simulation-config {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: end;
+  gap: 12px 14px;
+}
+
+.pp-simulation-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pp-simulation-field-wide {
+  grid-column: span 2;
+}
+
+.pp-simulation-actions {
+  justify-content: flex-end;
+}
+
+.pp-simulation-controls label,
+.pp-simulation-config label {
   color: #e2e8f0;
   font-size: 12px;
   font-weight: 650;
 }
 
-.pp-simulation-controls select {
-  min-width: 190px;
+.pp-simulation-controls select,
+.pp-simulation-config select,
+.pp-simulation-config input {
+  min-width: 0;
+  width: 100%;
   height: 36px;
   border: 1px solid #3d4d68;
   border-radius: 8px;
@@ -1578,11 +1605,18 @@ html {
   font-size: 12px;
 }
 
-.pp-simulation-controls select:disabled {
+.pp-simulation-config input[type="number"] {
+  max-width: 100%;
+}
+
+.pp-simulation-controls select:disabled,
+.pp-simulation-config select:disabled,
+.pp-simulation-config input:disabled {
   opacity: 0.65;
 }
 
-.pp-simulation-controls button {
+.pp-simulation-controls button,
+.pp-simulation-config button {
   height: 36px;
   border: 0;
   border-radius: 8px;
@@ -1594,15 +1628,33 @@ html {
   font-weight: 700;
   cursor: pointer;
   transition: background 0.15s ease;
+  white-space: nowrap;
 }
 
-.pp-simulation-controls button:hover:not(:disabled) {
+.pp-simulation-controls button:hover:not(:disabled),
+.pp-simulation-config button:hover:not(:disabled) {
   background: #ff6332;
 }
 
-.pp-simulation-controls button:disabled {
+.pp-simulation-controls button:disabled,
+.pp-simulation-config button:disabled {
   opacity: 0.6;
   cursor: wait;
+}
+
+@media (max-width: 980px) {
+  .pp-simulation-config {
+    grid-template-columns: 1fr;
+  }
+  .pp-simulation-field-wide {
+    grid-column: auto;
+  }
+  .pp-simulation-actions {
+    justify-content: stretch;
+  }
+  .pp-simulation-config button {
+    width: 100%;
+  }
 }
 
 .pp-simulation-error {
@@ -1635,7 +1687,7 @@ html {
 
 .pp-simulation-result-grid {
   display: grid;
-  grid-template-columns: 1fr 0.7fr 0.8fr 1.5fr 0.8fr;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 }
 
@@ -1690,6 +1742,196 @@ html {
 .pp-simulation-grid .ag-root-wrapper {
   border: 0;
   border-radius: 10px;
+}
+
+.pp-diagnosis-loading {
+  margin: 0 0 14px;
+  color: #e8ee60;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pp-diagnosis-card {
+  margin: 0 0 18px;
+  border: 1px solid #3d4d68;
+  border-radius: 10px;
+  background: #20314d;
+  padding: 16px 18px;
+}
+
+.pp-diagnosis-detail-row {
+  padding: 8px 12px 12px;
+  background: #17243b;
+}
+
+.pp-diagnosis-detail-row .pp-diagnosis-card {
+  margin: 0;
+  max-height: 380px;
+  overflow: auto;
+}
+
+.pp-diagnosis-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.pp-diagnosis-card-head h4 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pp-diagnosis-save {
+  height: 30px;
+  border: 1px solid #3d4d68;
+  border-radius: 8px;
+  background: transparent;
+  padding: 0 12px;
+  color: #e8ee60;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pp-diagnosis-pattern {
+  margin: 0 0 10px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pp-diagnosis-cause,
+.pp-diagnosis-section p {
+  margin: 0;
+  color: #d7deea;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pp-diagnosis-section {
+  margin: 10px 0;
+}
+
+.pp-diagnosis-section strong,
+.pp-diagnosis-hypothesis strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pp-diagnosis-section ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #d7deea;
+  font-size: 12px;
+}
+
+.pp-diagnosis-hypothesis {
+  margin: 12px 0;
+  border-left: 3px solid #e8ee60;
+  background: rgba(232, 238, 96, 0.08);
+  padding: 10px 12px;
+  border-radius: 0 8px 8px 0;
+}
+
+.pp-diagnosis-hypothesis p {
+  margin: 0;
+  color: #f3f1e9;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.pp-diagnosis-confidence-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pp-diagnosis-confidence {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.pp-diagnosis-confidence-high { background: #166534; color: #dcfce7; }
+.pp-diagnosis-confidence-medium { background: #92400e; color: #fef3c7; }
+.pp-diagnosis-confidence-low { background: #991b1b; color: #fee2e2; }
+
+.pp-diagnosis-confidence-reason {
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.pp-latest-diagnosis {
+  border-left: 3px solid #e8ee60;
+}
+
+.pp-latest-diagnosis-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.pp-latest-diagnosis-head p,
+.pp-latest-diagnosis-meta {
+  margin: 4px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.pp-latest-diagnosis-merchant {
+  margin: 10px 0 2px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pp-latest-diagnosis-pattern {
+  margin: 0 0 10px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.pp-latest-diagnosis-cause {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.pp-latest-diagnosis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.pp-link-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #2563eb;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 /* Demo Ledger Metrics */
@@ -1861,12 +2103,6 @@ html {
 .pp-feed-marker svg {
   width: 17px;
   height: 17px;
-}
-
-.pp-feed-marker.reservation-released {
-  border-color: #bbf7d0;
-  background: #edf3e9;
-  color: #345d3c;
 }
 
 .pp-feed-marker.case-escalated {
@@ -2044,4 +2280,142 @@ html {
   .pp-footer span:last-child {
     width: 100%;
   }
+}
+
+/* Network nav + merchant desk split (M13) */
+.pp-nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.pp-nav-link:hover { color: #111827; }
+.pp-network-link { position: relative; }
+.pp-nav-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #dc2626;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+  flex: 0 0 auto;
+}
+
+.pp-attention-strip {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--pp-line, #e5e7eb);
+  border-radius: 10px;
+  background: #fafaf9;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.pp-attention-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #374151;
+  text-decoration: none;
+  min-width: 0;
+}
+.pp-attention-item:hover { text-decoration: underline; text-underline-offset: 2px; }
+.pp-attention-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-weight: 700;
+  font-size: 11px;
+}
+.pp-attention-incidents.is-alert .pp-attention-badge { background: #fee2e2; color: #991b1b; }
+.pp-attention-incidents.is-clear .pp-attention-badge { background: #f3f4f6; color: #4b5563; }
+.pp-attention-label { font-weight: 700; color: #111827; }
+.pp-attention-text { color: #374151; }
+.pp-attention-item time { color: #6b7280; font-size: 11px; white-space: nowrap; }
+.pp-attention-cta {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  padding: 0 15px;
+  border: 1px solid #17243b;
+  border-radius: 8px;
+  background: #17243b;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+.pp-attention-cta:hover { background: #263b5c; border-color: #263b5c; }
+.pp-attention-cta:focus-visible { outline: 3px solid #e87836; outline-offset: 2px; }
+.pp-attention-dismiss {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: #6b7280;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.pp-attention-dismiss:hover { color: #111827; }
+
+.pp-agent-actions-panel {
+  margin-top: 22px;
+  padding: 22px;
+  border: 1px solid var(--pp-line);
+  border-radius: 14px;
+  background: #fff;
+}
+.pp-agent-actions-panel-heading { margin: 0; }
+.pp-agent-actions-panel-heading > div { display: grid; gap: 4px; }
+.pp-agent-actions-panel-heading h2 { margin: 0; color: #17243b; font-size: 20px; line-height: 1.2; }
+.pp-agent-actions-panel-heading p { margin: 0; color: #5e6877; font-size: 12px; line-height: 1.5; }
+.pp-agent-actions-panel .pp-agent-actions-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.pp-agent-actions-panel .pp-agent-action {
+  min-height: 0;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #e6e1d8;
+  border-radius: 11px;
+  background: #fcfbf8;
+}
+.pp-agent-actions-panel .pp-feed-marker { width: 32px; height: 32px; margin-top: 0; }
+.pp-agent-action-copy { min-width: 0; flex: 1; }
+.pp-agent-action-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pp-agent-action-heading b { color: #17243b; font-size: 13px; line-height: 1.35; }
+.pp-agent-action-heading time { color: #68717e; font-size: 11px; white-space: nowrap; }
+.pp-agent-action-merchant {
+  display: inline-flex;
+  margin-top: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f0eee8;
+  color: #4e5661;
+  font-size: 11px;
+  font-weight: 650;
+}
+.pp-agent-action-copy p { margin: 8px 0 0; color: #4f5967; font-size: 12px; line-height: 1.5; }
+.pp-agent-actions-panel .pp-agent-actions-empty,
+.pp-agent-actions-panel .pp-agent-actions-error { margin: 14px 0 0; }
+
+@media (max-width: 680px) {
+  .pp-agent-actions-panel { padding: 17px; }
+  .pp-agent-actions-panel .pp-agent-actions-list { grid-template-columns: minmax(0, 1fr); }
+  .pp-attention-cta { margin-left: 0; }
 }

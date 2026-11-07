@@ -259,18 +259,6 @@
   color: var(--pp-ink);
 }
 
-.pp-merchant-case-link {
-  color: var(--pp-orange);
-  font-weight: 650;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-  font-size: 12px;
-}
-
-.pp-merchant-case-link:hover {
-  color: #c2380d;
-}
-
 .pp-merchant-pill {
   display: inline-flex;
   align-items: center;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import "./merchant.css";
 
 type OpenCase = {
@@ -197,7 +196,6 @@ export default function MerchantDashboardPage() {
                     <th>Status</th>
                     <th>Amount</th>
                     <th>Created</th>
-                    <th>Workspace</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -222,14 +220,6 @@ export default function MerchantDashboardPage() {
                       </td>
                       <td>
                         <span style={{ color: "var(--pp-subtle)" }}>{formatDate(c.createdAt)}</span>
-                      </td>
-                      <td>
-                        <Link
-                          href={`/owner/cases?caseId=${encodeURIComponent(c.id)}&merchantId=${encodeURIComponent(merchant?.id ?? "")}`}
-                          className="pp-merchant-case-link"
-                        >
-                          Open case modal →
-                        </Link>
                       </td>
                     </tr>
                   ))}

@@ -36,7 +36,6 @@ export async function POST(request: Request) {
       paymentStatus: succeeded ? "COMPLETED" : "FAILED",
       origin: "AGENT",
       simulated: false,
-      inventory: succeeded ? "COMMITTED" : "RELEASED",
       humanReview: { required: !succeeded, caseId: createdCase?.id ?? null },
       recovery: succeeded
         ? { action: "none", message: "Payment completed." }

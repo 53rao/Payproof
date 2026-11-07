@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDatabase } from "@/db/client";
+import { DEMO_MERCHANTS } from "@/lib/merchants";
 import {
   createMerchantSession,
   getMerchantSession,
@@ -50,27 +51,33 @@ export async function POST(request: Request) {
     const cleanEmail = email.trim().toLowerCase();
     const db = getDatabase();
 
-    let merchant: { id: string; name: string; email: string | null; passwordHash: string | null } | null = null;
+    let merchant: { id: string; name: string; email: string | null; passwordHash: string | null; simulated: boolean } | null = null;
 
     if (db) {
       merchant = await db.merchant.findUnique({
         where: { email: cleanEmail },
-        select: { id: true, name: true, email: true, passwordHash: true },
+        select: { id: true, name: true, email: true, passwordHash: true, simulated: true },
       });
     }
 
-    // Fallback if database is offline or unseeded
-    if (!merchant && (cleanEmail === "northstar@payproof.demo" || cleanEmail === "fieldform@payproof.demo")) {
-      const isNorthstar = cleanEmail === "northstar@payproof.demo";
-      merchant = {
-        id: isNorthstar ? "northstar" : "fieldform",
-        name: isNorthstar ? "Northstar Goods" : "Field & Form",
-        email: cleanEmail,
-        passwordHash: null,
-      };
-      const valid = password === (isNorthstar ? "northstar123" : "fieldform123");
+    const demoMerchant = DEMO_MERCHANTS.find((candidate) => candidate.email === cleanEmail);
+    // Use the published demo credential for fictional accounts even when a stale
+    // password hash exists in the local database. Real merchant accounts always
+    // continue to authenticate against their stored password hash.
+    if (demoMerchant && (!merchant || (merchant.simulated && merchant.id === demoMerchant.id))) {
+      const valid = password === demoMerchant.defaultPassword
+        || Boolean(merchant?.passwordHash && await verifyPassword(password, merchant.passwordHash));
       if (!valid) {
         return NextResponse.json({ error: "Email or password did not match." }, { status: 401 });
+      }
+      if (!merchant) {
+        merchant = {
+          id: demoMerchant.id,
+          name: demoMerchant.name,
+          email: cleanEmail,
+          passwordHash: null,
+          simulated: true,
+        };
       }
     } else {
       if (!merchant || !merchant.passwordHash) {

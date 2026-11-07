@@ -3,13 +3,9 @@ export type DemoOrder = { id: string; amount: number; status: string; createdAt:
 export type DemoState = {
   simulated: true;
   storage: string;
-  protected: boolean;
-  stock: Record<string, number>;
-  heldStock: Record<string, number>;
-  committedStock: Record<string, number>;
   orders: DemoOrder[];
   cases: DemoCase[];
-  counters: { paymentEvents: number; failedPayments: number; recoveredStock: number; stuckStock: number; openCases: number; agentFailureCases: number; humanFailureCases: number; recoveredRevenue: number; recoveredOrders: number };
+  counters: { paymentEvents: number; failedPayments: number; openCases: number; agentFailureCases: number; humanFailureCases: number; recoveredRevenue: number; recoveredOrders: number };
 };
-export type FeedEvent = { kind: "Payments" | "Inventory"; title: string; ref: string; detail: string; time: string; failed: boolean };
+export type FeedEvent = { kind: "Payments"; title: string; ref: string; detail: string; time: string; failed: boolean };
 export type IconName = "grid" | "chart" | "shield" | "receipt" | "box" | "chevron" | "search" | "refresh" | "info" | "alert" | "arrow" | "filter" | "check" | "minus" | "expand";

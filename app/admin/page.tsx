@@ -5,8 +5,7 @@ import gsap from "gsap";
 import type { DemoState } from "@/components/admin/types";
 import { SectionRail } from "@/components/admin/SectionRail";
 import { DashboardHeader } from "@/components/admin/DashboardHeader";
-import { Overview } from "@/components/admin/Overview";
-import { MerchantHealthSummary } from "@/components/admin/MerchantHealthSummary";
+import { NeedsAttentionStrip } from "@/components/admin/NeedsAttentionStrip";
 import { MerchantAnalytics } from "@/components/admin/MerchantAnalytics";
 import { TransactionSimulations } from "@/components/admin/TransactionSimulations";
 import { PaymentEvents } from "@/components/admin/PaymentEvents";
@@ -24,12 +23,6 @@ export default function AdminPage() {
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState("");
   const { contextSafe } = useGSAP({ scope: rootRef });
-
-  useGSAP(() => {
-    if (!data || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    gsap.to(".pp-toggle i", { x: data.protected ? 15 : 0, duration: 0.48, ease: "elastic.out(1, 0.62)" });
-    gsap.to(".pp-toggle", { backgroundColor: data.protected ? "#111416" : "#66717d", duration: 0.25, ease: "power1.out" });
-  }, { scope: rootRef, dependencies: [data?.protected] });
 
   const refresh = useCallback(async () => {
     try {
@@ -51,26 +44,6 @@ export default function AdminPage() {
   const failedOrders = data?.orders.filter((order) => order.status === "FAILED").length ?? 0;
   const totalOrders = data?.orders.length ?? 0;
   const failedRate = totalOrders ? Math.round((failedOrders / totalOrders) * 100) : 0;
-  const toggleProtection = useCallback(contextSafe(async () => {
-    if (!data || updating) return;
-    if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) gsap.fromTo(".pp-toggle", { scale: 0.94 }, { scale: 1, duration: 0.42, ease: "elastic.out(1, 0.55)" });
-    setUpdating(true);
-    try { const response = await fetch("/api/demo/protection", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ enabled: !data.protected }) }); if (!response.ok) throw new Error("Could not update protection."); setData(await response.json()); }
-    catch (err) { setError(err instanceof Error ? err.message : "Could not update protection."); }
-    finally { setUpdating(false); }
-  }), [contextSafe, data, updating]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
-      if (event.key === "t" || event.key === "T") {
-        void toggleProtection();
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toggleProtection]);
   const reset = useCallback(contextSafe(async () => {
     if (updating) return;
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) gsap.to(".pp-content", { opacity: 0.82, duration: 0.16 });
@@ -85,14 +58,14 @@ export default function AdminPage() {
     window.location.replace("/login");
   }, []);
 
-  return <main ref={rootRef} className="pp-shell">
+  return <main ref={rootRef} className="pp-shell pp-merchant-desk-shell">
     <SectionRail data={data}/>
     <div className="pp-app">
       <DashboardHeader data={data} onSignOut={signOut}/>
       <div className="pp-workspace">
         <div className="pp-content">
-          <Overview error={error}/>
-          <MerchantHealthSummary/>
+          <NeedsAttentionStrip />
+          {error && <div className="pp-error" role="alert">{error}</div>}
           <PaymentEvents data={data} failedRate={failedRate} failedOrders={failedOrders} totalOrders={totalOrders}/>
           <OrderManagement data={data} loading={loading} totalOrders={totalOrders}/>
           <section className="pp-screen pp-demo-tools" aria-labelledby="pp-demo-tools-title">
@@ -101,7 +74,7 @@ export default function AdminPage() {
             <TransactionSimulations/>
             <MerchantAnalytics/>
           </section>
-          <footer className="pp-footer"><span>PAYPROOF</span><span>PLATFORM ACTIVE</span></footer>
+          <footer className="pp-footer"><span>DEMO LEDGER · NEON-POSTGRES</span><span>PAYPROOF MERCHANT DESK</span><span>FICTIONAL PAYMENT AND CUSTOMER DATA</span></footer>
         </div>
         <AgentActions variant="rail"/>
       </div>

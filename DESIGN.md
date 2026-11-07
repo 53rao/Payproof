@@ -1,6 +1,6 @@
 ---
 name: PayProof Merchant Desk
-description: A calm, legible operations console for simulated payment and inventory incidents.
+description: A calm, legible operations console for payment incidents and merchant cases.
 colors:
   ink: "#111416"
   canvas: "#f6f7f8"
@@ -56,7 +56,7 @@ components:
 
 ## Overview
 
-The merchant console is an Operate surface for reviewing simulated checkout outcomes, related stock reservations, and case evidence. It borrows the clear hierarchy and bento composition of the approved dashboard reference while keeping PayProof's demo constraints visible. Payment records help operators investigate an incident; they do not establish customer intent or order fulfillment.
+The merchant console is an operations surface for reviewing checkout outcomes, payment incidents, and case evidence. It keeps PayProof's Sandbox and demo constraints visible. Payment records help operators investigate an incident; they do not establish customer intent.
 
 The main workspace pairs a quiet white canvas with crisp black feature panels. A narrow icon rail preserves section-based navigation, while a separate activity stream keeps recent payment and case events in view on wide screens. Secondary records sit lower on the page so the opening view remains focused.
 
@@ -81,7 +81,7 @@ These rules describe `/admin`. The storefront at `/` retains its existing visual
 - Snap each major section to a full viewport start so a manual scroll does not leave the previous section's rows hanging above the active view.
 - On wide screens, use a flexible content column and a right activity stream. Move the stream below the main content at tablet widths.
 - Use a four-column metric row on wide screens and a two-column grid on smaller screens.
-- Keep case evidence, inventory, and the full ledger lower in the page than the payment overview.
+- Keep case evidence and the full ledger lower in the page than the payment overview.
 
 ## Elevation & Depth
 
@@ -96,15 +96,14 @@ These rules describe `/admin`. The storefront at `/` retains its existing visual
 ## Components
 
 - Metric panels show the label, value, and one line of context.
-- The order-safety panel uses the black surface and includes a clearly named toggle with its state and consequence.
-- Activity items are derived from persisted order and case records. If the source does not provide inventory events, show an explicit empty state rather than inventing events.
-- Evidence rows distinguish found records from missing records and keep the fulfillment uncertainty visible.
+- The payment overview uses the black surface to emphasize failure patterns and next steps.
+- Activity items are derived from persisted order, payment, incident, and case records.
+- Evidence rows distinguish found records from unavailable records.
 
 ## Do's and Don'ts
 
 - Do label all demo data as simulated.
 - Do keep failures, pending states, and successful outcomes visually distinct.
 - Do retain functional section anchors and keyboard focus states.
-- Don't infer fulfillment or customer intent from payment state.
-- Don't render synthetic inventory events as if the ledger recorded them.
+- Don't infer customer intent from payment state.
 - Don't fill the first viewport with every available record.

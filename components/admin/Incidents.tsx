@@ -130,7 +130,7 @@ export function Incidents() {
         <p className="pp-incident-detail">{incident.detail}</p>
         <p className="pp-incident-confidence">Confidence: {incident.confidence}</p>
         <div className="pp-incident-actions">
-          {incident.actions.includes("NOTIFY_MERCHANT") && <button type="button" onClick={() => void performAction(incident, "NOTIFY_MERCHANT")} disabled={busy}>{busy ? "Working…" : "Notify Merchant"}</button>}
+          {incident.actions.includes("NOTIFY_MERCHANT") && <button type="button" onClick={() => void performAction(incident, "NOTIFY_MERCHANT")} disabled={busy}>{busy ? "Preparing draft…" : draft ? "Refresh draft" : "Prepare merchant draft"}</button>}
           {incident.actions.includes("FLAG_FOR_MONITORING") && <button type="button" onClick={() => void performAction(incident, "FLAG_FOR_MONITORING")} disabled={busy || flagged.has(incident.id)}>{flagged.has(incident.id) ? "Flagged" : "Flag for Monitoring"}</button>}
           {incident.actions.includes("DISMISS") && <button type="button" className="pp-incident-dismiss" onClick={() => void performAction(incident, "DISMISS")} disabled={busy}>Dismiss</button>}
         </div>

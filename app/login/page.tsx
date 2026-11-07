@@ -33,7 +33,7 @@ export default function LoginPage() {
     <a className="pp-login-wordmark" href="/">PayProof<span>.</span></a>
     <div className="pp-login-layout">
       <section className="pp-login-story">
-        <div className="pp-login-story-copy"><span className="pp-login-label">MERCHANT DESK</span><h1>Every payment tells a story.</h1><p>See what happened, protect the shelf, and keep the evidence close.</p></div>
+        <div className="pp-login-story-copy"><span className="pp-login-label">MERCHANT DESK</span><h1>Every payment tells a story.</h1><p>Trace what happened, preserve the evidence, and keep merchant decisions in human hands.</p></div>
         <div className="pp-login-art" role="img" aria-label="A considered collection of everyday store objects"/>
         <div className="pp-login-story-foot"><span><i/> PRIVATE WORKSPACE</span><span>SIMULATED DATA</span></div>
       </section>

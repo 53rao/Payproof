@@ -1,0 +1,26 @@
+.pp-network-workspace {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pp-network-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.pp-network-back {
+  margin-bottom: 8px;
+}
+
+.pp-back-link {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.pp-back-link:hover {
+  color: #111827;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

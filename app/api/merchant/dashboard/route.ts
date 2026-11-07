@@ -3,6 +3,7 @@ import { getMerchantSession } from "@/lib/auth";
 import { getDatabase } from "@/db/client";
 import { getDemoState } from "@/lib/demo-store";
 import { detectIncidents } from "@/lib/incident-detector";
+import { DEMO_MERCHANTS } from "@/lib/merchants";
 import { products as catalogProducts } from "@/lib/products";
 
 export async function GET() {
@@ -105,9 +106,10 @@ export async function GET() {
 
     // In-memory fallback
     const state = await getDemoState();
-    const ownedProductIds = merchantId === "northstar" ? ["mug", "tote", "candle"] : ["journal", "bottle", "socks"];
-    const merchantName = merchantId === "northstar" ? "Northstar Goods" : "Field & Form";
-    const merchantEmail = session.email || (merchantId === "northstar" ? "northstar@payproof.demo" : "fieldform@payproof.demo");
+    const demoMerchant = DEMO_MERCHANTS.find((candidate) => candidate.id === merchantId);
+    const ownedProductIds = demoMerchant?.products ?? [];
+    const merchantName = demoMerchant?.name ?? session.merchantName;
+    const merchantEmail = session.email;
 
     const orders = state.orders.filter((o) => o.items.some((i) => ownedProductIds.includes(i.id)));
     const totalOrders = orders.length;

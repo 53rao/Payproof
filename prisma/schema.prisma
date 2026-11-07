@@ -11,13 +11,10 @@ model Product {
   id             String             @id
   name           String
   priceCents     Int                @map("price_cents")
-  initialStock   Int                @default(12) @map("initial_stock")
-  availableStock Int                @default(12) @map("available_stock")
   simulated      Boolean            @default(true)
   merchantId     String             @default("northstar") @map("merchant_id")
   merchant       Merchant           @relation(fields: [merchantId], references: [id])
   orderItems     OrderItem[]
-  reservations   StockReservation[]
 
   @@map("products")
 }
@@ -46,6 +43,23 @@ model AgentActionLog {
   @@map("agent_action_logs")
 }
 
+model SimulationDiagnosis {
+  id                String   @id @default(cuid())
+  simulationId      String   @unique @map("simulation_id")
+  merchantId        String   @map("merchant_id")
+  patternDetected   String   @map("pattern_detected") @db.Text
+  likelyCause       String   @map("likely_cause") @db.Text
+  evidence          Json
+  hypothesis        String   @db.Text
+  recommendedAction String   @map("recommended_action") @db.Text
+  confidence        String
+  confidenceReason  String   @map("confidence_reason") @db.Text
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([createdAt])
+  @@map("simulation_diagnoses")
+}
+
 model Owner {
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   email        String    @unique(map: "owners_email_unique")
@@ -68,7 +82,6 @@ model Order {
   recoveredFromOrderId    String?             @map("recovered_from_order_id")
   createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
   items                   OrderItem[]
-  reservations            StockReservation[]
   paymentEvents           PaymentEvent[]
   cases                   Case[]
   complaints              CustomerComplaint[]
@@ -88,19 +101,6 @@ model OrderItem {
   @@map("order_items")
 }
 
-model StockReservation {
-  orderId   String            @map("order_id")
-  productId String            @map("product_id")
-  quantity  Int
-  status    ReservationStatus @default(HELD)
-  expiresAt DateTime?         @map("expires_at") @db.Timestamptz(6)
-  createdAt DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
-  order     Order             @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "stock_reservations_order_id_orders_id_fk")
-  product   Product           @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "stock_reservations_product_id_products_id_fk")
-
-  @@id([orderId, productId], map: "stock_reservations_order_id_product_id_pk")
-  @@map("stock_reservations")
-}
 
 model PaymentEvent {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -190,14 +190,6 @@ model AiDraft {
   @@map("ai_drafts")
 }
 
-model ProtectionSetting {
-  id        Int      @id @default(1) @db.SmallInt
-  enabled   Boolean  @default(true)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-
-  @@map("protection_settings")
-}
-
 model DemoRun {
   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   startedAt DateTime  @default(now()) @map("started_at") @db.Timestamptz(6)
@@ -214,14 +206,6 @@ enum OrderStatus {
   FAILED
 
   @@map("order_status")
-}
-
-enum ReservationStatus {
-  HELD
-  RELEASED
-  COMMITTED
-
-  @@map("reservation_status")
 }
 
 enum CaseStatus {

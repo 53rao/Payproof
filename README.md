@@ -1,8 +1,8 @@
-# PayProof
+# PayProof Network
 
-PayProof is a payment incident and merchant protection desk with a fictional storefront and a Braintree Sandbox checkout.
+PayProof is a payment intelligence layer for commerce platforms. It interprets checkout outcomes, explains likely causes in plain language, helps recover eligible human checkouts, and surfaces patterns that need operator attention. It distinguishes human, agent, and unknown checkout origins so failures can follow the appropriate recovery path.
 
-> **Sandbox notice:** Configured checkout transactions run through Braintree Sandbox. No real money moves. When Braintree Sandbox credentials are absent, the storefront labels its fallback as simulated. Do not use real customer or payment data.
+> **Sandbox notice:** Configured transactions use Braintree Sandbox. No real money moves. Without Sandbox credentials, the storefront labels its fallback as simulated. Do not use real customer or payment data.
 
 ## Run locally
 
@@ -14,36 +14,30 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Braintree Sandbox credentials enable card checkout; without them, the clearly labeled simulated fallback remains available.
+Open [http://localhost:3000](http://localhost:3000). Braintree Sandbox credentials enable Hosted Fields checkout; without them, the clearly labeled simulated fallback remains available.
 
-## Implemented
+## Implemented capabilities
 
-- Six fictional products, searchable catalog, quantity-managed cart.
-- Server route recomputes the total from the product catalog; client-provided prices are never accepted.
-- Braintree Sandbox card checkout using Braintree Hosted Fields and server-side transaction creation.
-- Clearly labeled simulated success, decline, and duplicate-payment outcomes when Braintree Sandbox credentials are unavailable.
-- Server-side cart validation and idempotency key handling for repeated order-creation requests.
-- Stock reservations; successful capture commits the reservation, failed capture releases it when protection is on, and leaves it held when protection is off.
-- Simulated case creation and incident desk counters for payment events, failures, released stock, and stuck stock.
-- Merchant console at `/admin` with case queue, incident details, evidence readiness, inventory, order history, and protection controls.
-- Protection toggle and demo reset.
-- Motion-first checkout button with click ripple, loading/success/error feedback, and reduced-motion support.
-- GSAP-powered admin entrance, live metric/chart transitions, elastic protection toggle, case selection, refresh, and reset feedback; reduced-motion preferences are respected.
-- Optional Neon Postgres persistence through Prisma for products, owners, orders, order items, reservations, payment events, cases, evidence items, AI drafts, protection settings, and demo runs.
+- Braintree Sandbox checkout with server-side cart validation, catalog pricing, and idempotency.
+- Authenticated agent checkout with structured failure guidance and human-review cases.
+- Plain-language payment diagnostics, merchant-scoped analytics, and cross-merchant incident detection.
+- Single-use recovery links for eligible failed human checkouts.
+- Case review with transaction evidence, citations, customer reply drafts, and case-scoped assistance.
+- Merchant portal with store-scoped authentication and payment, case, and incident summaries.
+- Configurable Sandbox diagnostic simulations with Groq analysis grounded in the resulting transaction records.
+- Admin review of incident notification drafts and agent actions.
+- Optional Neon Postgres persistence through Prisma.
 
-## Current limitations
+AI output is advisory. PayProof does not move money autonomously or send notifications without human approval. All demo and Sandbox records are fictional.
 
-Without `DATABASE_URL`, the demo ledger remains process-memory only and resets when the server restarts. To enable Neon persistence locally, put your Neon connection string in the project-root `.env` file before running Prisma CLI commands (Next.js runtime can also read `.env.local`):
+## Persistence and migrations
 
-```sh
-npm run db:push
-npm run db:seed
-```
+Without `DATABASE_URL`, the demo ledger uses process memory and resets when the server restarts. To use Neon locally, configure the project-root `.env` and use the documented Prisma commands in `package.json`. Apply reviewed migrations only to the intended database.
 
-With `DATABASE_URL` configured, the API uses Prisma transactions for order creation, idempotency, stock reservations, capture results, incident records, protection settings, and reset. The seed script fills each table with repeatable fictional demo data. Braintree Sandbox is the only connected payment provider; its merchant ID, public key, and private key stay server-side, while a short-lived client token configures Hosted Fields in the browser. Simulated checkout is used only when Sandbox credentials are unavailable.
+The Prisma schema is in `prisma/schema.prisma`. A pending forward migration removes the legacy stock reservation and protection schema; apply it deliberately before deploying this code.
 
-Authenticated agent checkouts use `POST /api/connector/checkout` with `Authorization: Bearer $CONNECTOR_SHARED_SECRET` and JSON `{ "idempotencyKey": "...", "items": [{ "id": "mug", "quantity": 1 }], "paymentMethodNonce": "..." }`. This endpoint requires persistent database storage and configured Braintree Sandbox credentials. Failed agent payments release reservations immediately and return a machine-readable alternate-payment action; each failure also creates a case flagged for human review. Storefront buyers are labeled `HUMAN` only after explicitly confirming the purchase is being completed by a person. Other orders default to `UNKNOWN`.
+## Agent checkout
 
-The Prisma schema lives in `prisma/schema.prisma`. For rapid prototyping use `npm run db:push`; for versioned schema changes use `npm run db:migrate` and commit the generated Prisma migration.
+`POST /api/connector/checkout` accepts an authenticated request using `Authorization: Bearer $CONNECTOR_SHARED_SECRET` and JSON containing `idempotencyKey`, catalog `items`, and a Braintree `paymentMethodNonce`. It requires persistent storage and configured Braintree Sandbox credentials. Failed agent payments create a case requiring human review and return machine-readable alternate-payment guidance. Storefront checkouts are marked `HUMAN` only after explicit confirmation; otherwise their origin is `UNKNOWN`.
 
-See [PAYPROOF_DEV_README.md](./PAYPROOF_DEV_README.md) for the complete build spec and phase order.
+See [MILESTONE_PLAN.md](./MILESTONE_PLAN.md) for implementation status and remaining work.
