@@ -1,8 +1,34 @@
 import "server-only";
+import { getDatabase } from "@/db/client";
 
-type DraftInput = { type: string; merchantName: string; summary: string; detail: string; confidence: string; detectedAt: string; caseCount?: number; oldestCaseAgeHours?: number };
+type DraftInput = {
+  type: string;
+  merchantName: string;
+  merchantId?: string;
+  summary: string;
+  detail: string;
+  confidence: string;
+  detectedAt: string;
+  caseCount?: number;
+  oldestCaseAgeHours?: number;
+};
 
-export async function draftMerchantNotification(incident: DraftInput): Promise<{ subject: string; body: string }> {
+export async function draftMerchantNotification(incident: DraftInput): Promise<{ subject: string; body: string; recipientEmail: string }> {
+  const db = getDatabase();
+  let recipientEmail = incident.merchantId === "fieldform" ? "fieldform@payproof.demo" : "northstar@payproof.demo";
+
+  if (db && incident.merchantId) {
+    try {
+      const merchant = await db.merchant.findUnique({
+        where: { id: incident.merchantId },
+        select: { email: true },
+      });
+      if (merchant?.email) recipientEmail = merchant.email;
+    } catch {
+      // Fallback already assigned
+    }
+  }
+
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) throw new Error("Groq is not configured for merchant notification drafts.");
   const model = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-20b";
@@ -34,5 +60,5 @@ export async function draftMerchantNotification(incident: DraftInput): Promise<{
   const subject = typeof value.subject === "string" ? value.subject.trim().slice(0, 180) : "";
   const body = typeof value.body === "string" ? value.body.replace(/\r\n?/g, "\n").trim().slice(0, 4000) : "";
   if (!subject || !body) throw new Error("Groq returned an invalid merchant notification draft.");
-  return { subject, body };
+  return { subject, body, recipientEmail };
 }

@@ -102,29 +102,36 @@ export function BraintreePaymentForm({
     setMessage("");
     try {
       // Check field validity before attempting tokenization
-      const state = instance.getState();
-      const fieldLabels: Record<string, string> = {
-        number: "Card number",
-        expirationDate: "Expiry date",
-        cvv: "Security code",
+      const hostedInstance = instance as unknown as {
+        getState?: () => {
+          fields?: Record<string, { isValid?: boolean; isEmpty?: boolean; isPotentiallyValid?: boolean }>;
+        };
       };
-      const problems: string[] = [];
-      for (const [key, field] of Object.entries(state.fields)) {
-        if (!field.isValid) {
-          const label = fieldLabels[key] ?? key;
-          if (field.isEmpty) {
-            problems.push(`${label} is required`);
-          } else if (!field.isPotentiallyValid) {
-            problems.push(`${label} is invalid`);
-          } else {
-            problems.push(`${label} is incomplete`);
+      if (typeof hostedInstance.getState === "function") {
+        const state = hostedInstance.getState();
+        const fieldLabels: Record<string, string> = {
+          number: "Card number",
+          expirationDate: "Expiry date",
+          cvv: "Security code",
+        };
+        const problems: string[] = [];
+        for (const [key, field] of Object.entries(state?.fields ?? {})) {
+          if (!field.isValid) {
+            const label = fieldLabels[key] ?? key;
+            if (field.isEmpty) {
+              problems.push(`${label} is required`);
+            } else if (!field.isPotentiallyValid) {
+              problems.push(`${label} is invalid`);
+            } else {
+              problems.push(`${label} is incomplete`);
+            }
           }
         }
-      }
-      if (problems.length > 0) {
-        setMessage(problems.join(". ") + ".");
-        setSubmitting(false);
-        return;
+        if (problems.length > 0) {
+          setMessage(problems.join(". ") + ".");
+          setSubmitting(false);
+          return;
+        }
       }
 
       const { nonce } = await instance.tokenize();

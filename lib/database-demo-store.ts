@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { products } from "@/lib/products";
+import { DEMO_MERCHANTS, PRODUCT_TO_MERCHANT_ID } from "@/lib/merchants";
 import { INITIAL_DEMO_STOCK } from "@/lib/inventory";
 import { paymentProvider } from "@/lib/payment-provider";
 import { getDatabase } from "@/db/client";
 import { logAgentAction } from "@/lib/agent-action-log";
+import { hashPassword } from "@/lib/auth";
 
 type CartLine = { id: string; quantity: number };
 const initialStock = INITIAL_DEMO_STOCK;
@@ -23,6 +25,18 @@ async function ensureSeeded() {
   const promise = (async () => {
     const marker = await db.order.findUnique({ where: { id: "DEMO-ORDER-PAID" }, select: { id: true } });
     if (!marker) await seedDatabase();
+
+    const apex = await db.merchant.findUnique({ where: { id: "apex" }, select: { email: true, passwordHash: true } });
+    if (!apex?.passwordHash) {
+      for (const merchant of DEMO_MERCHANTS) {
+        const passwordHash = await hashPassword(merchant.defaultPassword);
+        await db.merchant.upsert({
+          where: { id: merchant.id },
+          create: { id: merchant.id, name: merchant.name, email: merchant.email, passwordHash, simulated: true },
+          update: { name: merchant.name, email: merchant.email, passwordHash },
+        });
+      }
+    }
   })();
   runtime.payproofSeedCheck = { connection, promise };
   try { await promise; }
@@ -33,10 +47,23 @@ export async function seedDatabase() {
   const db = getDatabase();
   if (!db) throw new Error("DATABASE_URL is required to seed the database.");
 
-  await db.product.createMany({
-    data: products.map((product) => ({ id: product.id, name: product.name, priceCents: product.price * 100, initialStock, availableStock: initialStock, simulated: true, merchantId: ["mug", "tote", "candle"].includes(product.id) ? "northstar" : "fieldform" })),
-    skipDuplicates: true,
-  });
+  for (const merchant of DEMO_MERCHANTS) {
+    const passwordHash = await hashPassword(merchant.defaultPassword);
+    await db.merchant.upsert({
+      where: { id: merchant.id },
+      create: { id: merchant.id, name: merchant.name, email: merchant.email, passwordHash, simulated: true },
+      update: { name: merchant.name, email: merchant.email, passwordHash },
+    });
+  }
+
+  for (const product of products) {
+    const merchantId = PRODUCT_TO_MERCHANT_ID[product.id] ?? "northstar";
+    await db.product.upsert({
+      where: { id: product.id },
+      create: { id: product.id, name: product.name, priceCents: product.price * 100, initialStock, availableStock: initialStock, simulated: true, merchantId },
+      update: { name: product.name, priceCents: product.price * 100, merchantId },
+    });
+  }
   await db.protectionSetting.upsert({ where: { id: 1 }, create: { id: 1, enabled: true }, update: {} });
   // Seed-only marker. This is not a usable password hash or a demo login.
   await db.owner.upsert({
@@ -417,4 +444,36 @@ export async function resetDatabaseDemo() {
     await tx.demoRun.create({ data: { simulated: true } });
   });
   return getDatabaseDemoState();
+}
+
+export async function getDatabaseOrderActivity() {
+  const db = getDatabase();
+  if (!db) return [];
+  const orders = await db.order.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 150,
+    include: {
+      items: true,
+      paymentEvents: { where: { type: "CAPTURE_RESULT" }, orderBy: { createdAt: "desc" }, take: 1 },
+      cases: { select: { id: true, status: true, cause: true }, take: 1 },
+    },
+  });
+  return orders.map((order) => {
+    const event = order.paymentEvents[0];
+    const raw = event?.rawJson;
+    const transactionId = raw && typeof raw === "object" && !Array.isArray(raw) && "transactionId" in raw && typeof raw.transactionId === "string" ? raw.transactionId : undefined;
+    const linkedCase = order.cases[0];
+    return {
+      id: order.id,
+      amount: order.totalCents / 100,
+      status: order.status,
+      createdAt: order.createdAt.toISOString(),
+      origin: order.checkoutOrigin,
+      transactionId,
+      issue: event?.issue ?? undefined,
+      debug_id: event?.debugId ?? undefined,
+      items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })),
+      case: linkedCase ? { id: linkedCase.id, status: linkedCase.status, issue: linkedCase.cause } : undefined,
+    };
+  });
 }

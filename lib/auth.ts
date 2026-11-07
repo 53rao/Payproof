@@ -1,10 +1,16 @@
-import { createHmac, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { cookies } from "next/headers";
-import { OWNER_SESSION_COOKIE, OWNER_SESSION_TTL_SECONDS } from "@/lib/auth-constants";
+import {
+  MERCHANT_SESSION_COOKIE,
+  MERCHANT_SESSION_TTL_SECONDS,
+  OWNER_SESSION_COOKIE,
+  OWNER_SESSION_TTL_SECONDS,
+} from "@/lib/auth-constants";
 
 const scrypt = promisify(scryptCallback);
 type Session = { email: string; expiresAt: number };
+export type MerchantSession = { merchantId: string; merchantName: string; email: string; expiresAt: number };
 
 function sessionSecret() {
   const secret = process.env.SESSION_SECRET;
@@ -23,6 +29,12 @@ export async function verifyPassword(password: string, passwordHash: string) {
   if (scheme !== "scrypt_v1" || !salt || !/^[a-f\d]{128}$/i.test(expected ?? "")) return false;
   const actual = (await scrypt(password, Buffer.from(salt, "base64url"), 64)) as Buffer;
   return secureEqual(actual.toString("hex"), expected.toLowerCase());
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString("base64url");
+  const derived = (await scrypt(password, Buffer.from(salt, "base64url"), 64)) as Buffer;
+  return `scrypt_v1:${salt}:${derived.toString("hex")}`;
 }
 
 export function isOwnerLoginConfigured() {
@@ -69,6 +81,53 @@ export async function getOwnerSession() {
 
 export async function hasOwnerSession() {
   return Boolean(await getOwnerSession());
+}
+
+export function createMerchantSession(merchant: { merchantId: string; merchantName: string; email: string }) {
+  const value: MerchantSession = {
+    merchantId: merchant.merchantId,
+    merchantName: merchant.merchantName,
+    email: merchant.email.trim().toLowerCase(),
+    expiresAt: Math.floor(Date.now() / 1000) + MERCHANT_SESSION_TTL_SECONDS,
+  };
+  const payload = Buffer.from(JSON.stringify(value)).toString("base64url");
+  return `${payload}.${signature(payload)}`;
+}
+
+export function verifyMerchantSession(token: string | undefined): MerchantSession | null {
+  if (!token) return null;
+  try {
+    const [payload, suppliedSignature, extra] = token.split(".");
+    if (!payload || !suppliedSignature || extra) return null;
+    if (!secureEqual(signature(payload), suppliedSignature)) return null;
+    const value = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Partial<MerchantSession>;
+    if (
+      typeof value.merchantId !== "string" ||
+      typeof value.merchantName !== "string" ||
+      typeof value.email !== "string" ||
+      typeof value.expiresAt !== "number" ||
+      value.expiresAt <= Date.now() / 1000
+    ) {
+      return null;
+    }
+    return {
+      merchantId: value.merchantId,
+      merchantName: value.merchantName,
+      email: value.email,
+      expiresAt: value.expiresAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getMerchantSession(): Promise<MerchantSession | null> {
+  const cookieStore = await cookies();
+  return verifyMerchantSession(cookieStore.get(MERCHANT_SESSION_COOKIE)?.value);
+}
+
+export async function hasMerchantSession(): Promise<boolean> {
+  return Boolean(await getMerchantSession());
 }
 
 export function connectorSecretMatches(value: string | null) {

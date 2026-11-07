@@ -25,6 +25,8 @@ model Product {
 model Merchant {
   id           String           @id
   name         String
+  email        String?          @unique(map: "merchants_email_unique")
+  passwordHash String?          @map("password_hash")
   simulated    Boolean          @default(true)
   products     Product[]
   agentActions AgentActionLog[]

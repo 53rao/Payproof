@@ -1,8 +1,9 @@
 import { products } from "@/lib/products";
+import { DEMO_MERCHANTS } from "@/lib/merchants";
 import { INITIAL_DEMO_STOCK } from "@/lib/inventory";
 import { paymentProvider, type PaymentResult } from "@/lib/payment-provider";
 import { getDatabase } from "@/db/client";
-import { captureDatabaseOrder, createDatabaseOrder, getDatabaseDemoState, resetDatabaseDemo, setDatabaseProtection } from "@/lib/database-demo-store";
+import { captureDatabaseOrder, createDatabaseOrder, getDatabaseDemoState, getDatabaseOrderActivity, resetDatabaseDemo, setDatabaseProtection } from "@/lib/database-demo-store";
 
 type OrderState = "PENDING" | "PROCESSING" | "PAID" | "FAILED";
 type ReservationState = "HELD" | "RELEASED" | "COMMITTED";
@@ -41,7 +42,7 @@ export async function getDemoState() {
   const heldStock = Object.fromEntries(products.map((product) => [product.id, state.reservations.filter((item) => item.productId === product.id && item.state === "HELD").reduce((sum, item) => sum + item.quantity, 0)]));
   const committedStock = Object.fromEntries(products.map((product) => [product.id, state.reservations.filter((item) => item.productId === product.id && item.state === "COMMITTED").reduce((sum, item) => sum + item.quantity, 0)]));
   const recovered = state.orders.filter((order) => order.recoveredFromOrderId && order.status === "PAID");
-  const merchantAnalytics = [{ id: "northstar", name: "Northstar Goods", products: ["mug", "tote", "candle"] }, { id: "fieldform", name: "Field & Form", products: ["journal", "bottle", "socks"] }].map((merchant) => { const owns = (order: Order) => order.items.some((item) => merchant.products.includes(item.id)); const orders = state.orders.filter(owns); const ids = new Set(orders.map((order) => order.id)); const reservations = state.reservations.filter((reservation) => merchant.products.includes(reservation.productId)); const recoveredOrders = orders.filter((order) => order.recoveredFromOrderId && order.status === "PAID"); const merchantCases = state.cases.filter((item) => { const caseOrder = state.orders.find((order) => order.id === item.orderId); return item.status === "OPEN" && Boolean(caseOrder && owns(caseOrder)); }); const casesNeedingAction = merchantCases.filter((item) => item.type === "PAYMENT_FAILURE" && state.orders.find((order) => order.id === item.orderId)?.origin === "HUMAN").length; return { id: merchant.id, name: merchant.name, paymentEvents: orders.length + orders.reduce((sum, order) => sum + (order.payment ? 1 : 0), 0), failedPayments: orders.filter((order) => order.status === "FAILED").length, recoveredStock: reservations.filter((item) => item.state === "RELEASED").reduce((sum, item) => sum + item.quantity, 0), stuckStock: reservations.filter((item) => item.state === "HELD").reduce((sum, item) => sum + item.quantity, 0), recoveredRevenue: recoveredOrders.reduce((sum, order) => sum + order.amount, 0), recoveredOrders: recoveredOrders.length, orderCount: ids.size, openCases: merchantCases.length, casesNeedingAction }; });
+  const merchantAnalytics = DEMO_MERCHANTS.map((merchant) => { const owns = (order: Order) => order.items.some((item) => merchant.products.includes(item.id)); const orders = state.orders.filter(owns); const ids = new Set(orders.map((order) => order.id)); const reservations = state.reservations.filter((reservation) => merchant.products.includes(reservation.productId)); const recoveredOrders = orders.filter((order) => order.recoveredFromOrderId && order.status === "PAID"); const merchantCases = state.cases.filter((item) => { const caseOrder = state.orders.find((order) => order.id === item.orderId); return item.status === "OPEN" && Boolean(caseOrder && owns(caseOrder)); }); const casesNeedingAction = merchantCases.filter((item) => item.type === "PAYMENT_FAILURE" && state.orders.find((order) => order.id === item.orderId)?.origin === "HUMAN").length; return { id: merchant.id, name: merchant.name, paymentEvents: orders.length + orders.reduce((sum, order) => sum + (order.payment ? 1 : 0), 0), failedPayments: orders.filter((order) => order.status === "FAILED").length, recoveredStock: reservations.filter((item) => item.state === "RELEASED").reduce((sum, item) => sum + item.quantity, 0), stuckStock: reservations.filter((item) => item.state === "HELD").reduce((sum, item) => sum + item.quantity, 0), recoveredRevenue: recoveredOrders.reduce((sum, order) => sum + order.amount, 0), recoveredOrders: recoveredOrders.length, orderCount: ids.size, openCases: merchantCases.length, casesNeedingAction }; });
   const openCases = state.cases.filter((item) => item.status === "OPEN");
   const caseOrderOrigin = (item: CaseRecord) => state.orders.find((order) => order.id === item.orderId)?.origin ?? "UNKNOWN";
   return { simulated: true, storage: "process-memory", protected: state.protected, stock: state.stock, heldStock, committedStock, orders: state.orders.slice(-12).reverse().map((order) => ({ ...order, transactionId: order.payment?.transaction_id, origin: order.origin ?? "UNKNOWN" })), cases: state.cases.slice(-8).reverse(), merchantAnalytics, counters: { paymentEvents: state.paymentEvents, failedPayments: state.failedPayments, recoveredStock: state.recoveredStock, stuckStock: state.stuckStock, openCases: openCases.length, agentFailureCases: openCases.filter((item) => item.type === "PAYMENT_FAILURE" && item.agentHandled).length, humanFailureCases: openCases.filter((item) => item.type === "PAYMENT_FAILURE" && caseOrderOrigin(item) === "HUMAN").length, recoveredRevenue: recovered.reduce((sum, order) => sum + order.amount, 0), recoveredOrders: recovered.length } };
@@ -147,4 +148,28 @@ export function createMemoryComplaint(accessTokenHash: string, orderId: string, 
   memoryComplaints().unshift(complaint);
   ledger().cases.unshift({ id: caseId, orderId, issue: `Customer complaint · ${type}`, type: "CUSTOMER_COMPLAINT", createdAt: now, status: "OPEN" });
   return complaint;
+}
+
+export async function getOrderActivityList() {
+  if (getDatabase()) return getDatabaseOrderActivity();
+  const state = ledger();
+  const casesByOrderId = new Map<string, (typeof state.cases)[number]>();
+  for (const c of state.cases) {
+    if (!casesByOrderId.has(c.orderId)) casesByOrderId.set(c.orderId, c);
+  }
+  return state.orders.map((order) => {
+    const linkedCase = casesByOrderId.get(order.id);
+    return {
+      id: order.id,
+      amount: order.amount,
+      status: order.status,
+      createdAt: order.createdAt,
+      origin: order.origin ?? "UNKNOWN",
+      transactionId: order.payment?.transaction_id,
+      issue: order.issue ?? order.payment?.issue,
+      debug_id: order.debug_id ?? order.payment?.debug_id,
+      items: order.items,
+      case: linkedCase ? { id: linkedCase.id, status: linkedCase.status, issue: linkedCase.issue } : undefined,
+    };
+  }).reverse();
 }

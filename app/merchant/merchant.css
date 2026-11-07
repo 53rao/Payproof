@@ -1,0 +1,400 @@
+/* PayProof Merchant Portal Styles */
+
+.pp-merchant-shell {
+  --pp-ink: #17243b;
+  --pp-muted: #5e6877;
+  --pp-subtle: #747d89;
+  --pp-line: #ded9cf;
+  --pp-paper: #f1eee6;
+  --pp-white: #ffffff;
+  --pp-green: #13834e;
+  --pp-red: #c8493e;
+  --pp-orange: #ef4d1a;
+  --pp-amber: #d89528;
+  --sans: 'DM Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --mono: 'DM Mono', ui-monospace, Menlo, Monaco, Consolas, monospace;
+
+  min-height: 100vh;
+  background: var(--pp-paper);
+  color: var(--pp-ink);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.pp-merchant-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--pp-line);
+  background: rgba(248, 245, 238, 0.96);
+  backdrop-filter: blur(8px);
+  padding: 0 clamp(20px, 3vw, 48px);
+}
+
+.pp-merchant-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pp-merchant-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: #17243b;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 750;
+  text-decoration: none;
+}
+
+.pp-merchant-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.pp-merchant-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pp-merchant-name {
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+  color: var(--pp-ink);
+}
+
+.pp-merchant-id-badge {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #e5e0d4;
+  color: var(--pp-muted);
+}
+
+.pp-merchant-powered {
+  font-size: 10px;
+  color: var(--pp-subtle);
+  letter-spacing: 0.02em;
+}
+
+.pp-merchant-top-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pp-merchant-signout {
+  border: 1px solid var(--pp-line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 6px 14px;
+  color: var(--pp-ink);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pp-merchant-signout:hover {
+  background: #f1eee6;
+  border-color: #cbbeab;
+}
+
+.pp-merchant-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px clamp(16px, 2.5vw, 36px) 60px;
+  box-sizing: border-box;
+}
+
+/* Payment Summary Section */
+.pp-merchant-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.pp-merchant-metric-card {
+  border: 1px solid var(--pp-line);
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 20px 22px;
+  box-shadow: 0 1px 3px rgba(23, 36, 59, 0.03);
+}
+
+.pp-merchant-metric-card span {
+  display: block;
+  color: var(--pp-muted);
+  font-size: 11px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.pp-merchant-metric-card strong {
+  font-size: 28px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+  color: var(--pp-ink);
+}
+
+.pp-merchant-metric-card.failed strong {
+  color: var(--pp-red);
+}
+
+.pp-merchant-metric-card.rate strong {
+  color: var(--pp-ink);
+}
+
+.pp-merchant-metric-card p {
+  margin: 4px 0 0;
+  color: var(--pp-subtle);
+  font-size: 11px;
+}
+
+/* Section Common */
+.pp-merchant-section {
+  border: 1px solid var(--pp-line);
+  border-radius: 14px;
+  background: #ffffff;
+  margin-bottom: 24px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(23, 36, 59, 0.03);
+}
+
+.pp-merchant-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px;
+  border-bottom: 1px solid #ede8de;
+}
+
+.pp-merchant-section-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--pp-ink);
+}
+
+.pp-merchant-section-head p {
+  margin: 2px 0 0;
+  color: var(--pp-muted);
+  font-size: 12px;
+}
+
+.pp-merchant-action-callout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #fed7aa;
+  border-radius: 999px;
+  background: #fff7ed;
+  padding: 4px 12px;
+  color: #c2410c;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Open Cases Table */
+.pp-merchant-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.pp-merchant-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12.5px;
+}
+
+.pp-merchant-table th {
+  background: #fbf9f4;
+  color: var(--pp-muted);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 18px;
+  border-bottom: 1px solid #ede8de;
+}
+
+.pp-merchant-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid #f2ede4;
+  vertical-align: middle;
+}
+
+.pp-merchant-table tr:last-child td {
+  border-bottom: none;
+}
+
+.pp-merchant-table tr:hover td {
+  background: #faf8f3;
+}
+
+.pp-merchant-case-id {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--pp-ink);
+}
+
+.pp-merchant-case-link {
+  color: var(--pp-orange);
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  font-size: 12px;
+}
+
+.pp-merchant-case-link:hover {
+  color: #c2380d;
+}
+
+.pp-merchant-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.pp-merchant-pill.open {
+  background: #fff0eb;
+  color: #9c2e22;
+}
+
+.pp-merchant-origin {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.pp-merchant-origin.human {
+  background: #eef2f6;
+  color: #3b506d;
+}
+
+.pp-merchant-origin.agent {
+  background: #fdf2f8;
+  color: #9d174d;
+}
+
+.pp-merchant-origin.unknown {
+  background: #f1eee6;
+  color: var(--pp-muted);
+}
+
+.pp-merchant-empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--pp-muted);
+  font-size: 13px;
+}
+
+/* Incidents Section */
+.pp-merchant-incidents-list {
+  display: grid;
+  divide-y: 1px solid #ede8de;
+}
+
+.pp-merchant-incident-row {
+  padding: 16px 22px;
+  border-bottom: 1px solid #ede8de;
+}
+
+.pp-merchant-incident-row:last-child {
+  border-bottom: none;
+}
+
+.pp-merchant-incident-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.pp-merchant-incident-type {
+  font-size: 10.5px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--pp-orange);
+}
+
+.pp-merchant-incident-time {
+  color: var(--pp-subtle);
+  font-size: 11px;
+}
+
+.pp-merchant-incident-summary {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--pp-ink);
+}
+
+.pp-merchant-incident-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pp-muted);
+  font-size: 11px;
+}
+
+.pp-merchant-incident-notice::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #13834e;
+}
+
+/* Demo Notice Footer */
+.pp-merchant-demo-notice {
+  border: 1px dashed var(--pp-line);
+  border-radius: 12px;
+  background: #f8f6f0;
+  padding: 14px 20px;
+  margin-top: 32px;
+  color: var(--pp-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.pp-merchant-demo-notice code {
+  font-family: var(--mono);
+  font-weight: 650;
+  color: var(--pp-ink);
+  background: #ece7dc;
+  padding: 1px 5px;
+  border-radius: 4px;
+}

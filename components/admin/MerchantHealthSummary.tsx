@@ -34,8 +34,17 @@ export function MerchantHealthSummary() {
     return () => { active = false; window.clearInterval(timer); };
   }, []);
 
-  return <article className="pp-panel pp-safety pp-merchant-health" aria-labelledby="pp-merchant-health-title">
-    <header className="pp-panel-head"><div><h2 id="pp-merchant-health-title">Merchant Health Summary</h2><p>Open cases and failure rates by merchant</p></div></header>
+  return <article
+    className="pp-merchant-health"
+    style={{ backgroundColor: "#17243b", color: "#ffffff", borderColor: "#23334d" }}
+    aria-labelledby="pp-merchant-health-title"
+  >
+    <header className="pp-panel-head">
+      <div>
+        <h2 id="pp-merchant-health-title" style={{ color: "#ffffff" }}>Merchant Health Summary</h2>
+        <p style={{ color: "#94a3b8" }}>Open cases and failure rates by merchant</p>
+      </div>
+    </header>
     {error ? <p className="pp-merchant-health-error" role="alert">{error}</p> : <div className="pp-merchant-health-list" role="table" aria-label="Merchant health summary">
       <div className="pp-merchant-health-row pp-merchant-health-head" role="row"><span role="columnheader">Merchant</span><span role="columnheader">Open cases</span><span role="columnheader">Failure rate</span><span role="columnheader">Health</span><span role="columnheader"/></div>
       {merchants.map((merchant) => {

@@ -55,6 +55,6 @@ export function AgentActions({ variant = "panel" }: { variant?: "panel" | "rail"
           <div className="pp-feed-copy"><div><b>{labels[action.type]}</b></div><p>{action.detail}</p><time dateTime={action.createdAt}>{new Date(action.createdAt).toLocaleString()}</time></div>
         </> : <><div><b>{labels[action.type]}</b><time dateTime={action.createdAt}>{new Date(action.createdAt).toLocaleString()}</time></div><p>{action.detail}</p></>}
       </li>)}
-    </ol> : <p className="pp-agent-actions-empty">No automatic actions recorded yet — run an agent failure simulation to see this panel in action</p>}
+    </ol> : <p className="pp-agent-actions-empty">No automatic actions recorded yet.</p>}
   </aside>;
 }

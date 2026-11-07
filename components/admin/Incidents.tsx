@@ -14,9 +14,8 @@ type Incident = {
   caseCount?: number;
   oldestCaseAgeHours?: number;
 };
-type NotificationDraft = { subject: string; body: string };
+type NotificationDraft = { subject: string; body: string; recipientEmail?: string };
 type DeliveryChannel = "EMAIL" | "CHATBOX";
-const defaultDemoRecipient = "raox58@gmail.com";
 const labels: Record<Incident["type"], string> = {
   FAILURE_SPIKE: "Failure spike",
   CARDING_PATTERN: "Possible carding pattern",
@@ -79,7 +78,11 @@ export function Incidents() {
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "The incident action could not be completed.");
       if (action === "NOTIFY_MERCHANT") {
-        setDrafts((current) => ({ ...current, [incident.id]: body as NotificationDraft }));
+        const draftData = body as NotificationDraft;
+        setDrafts((current) => ({ ...current, [incident.id]: draftData }));
+        if (draftData.recipientEmail) {
+          setRecipients((current) => ({ ...current, [incident.id]: draftData.recipientEmail! }));
+        }
       } else if (action === "FLAG_FOR_MONITORING") {
         setFlagged((current) => new Set(current).add(incident.id));
       } else {
@@ -113,11 +116,12 @@ export function Incidents() {
     <div className="pp-incidents-list">{visibleIncidents.map((incident) => {
       const draft = drafts[incident.id];
       const busy = Boolean(loadingAction[incident.id]);
-      const recipient = recipients[incident.id] ?? defaultDemoRecipient;
+      const defaultRecipient = incident.merchantId === "fieldform" ? "fieldform@payproof.demo" : "northstar@payproof.demo";
+      const recipient = recipients[incident.id] ?? draft?.recipientEmail ?? defaultRecipient;
       const channel = channels[incident.id] ?? "EMAIL";
       const validRecipient = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim());
-      const demoSubject = draft ? `[PayProof Demo] ${draft.subject}` : "";
-      const demoBody = draft ? `PayProof demo notification for judges. This is a demonstration draft, not a live merchant alert.\n\n${draft.body}` : "";
+      const demoSubject = draft ? draft.subject : "";
+      const demoBody = draft ? draft.body : "";
       const mailto = draft && validRecipient ? `mailto:${encodeURIComponent(recipient.trim())}?subject=${encodeURIComponent(demoSubject)}&body=${encodeURIComponent(demoBody)}` : undefined;
       return <article key={incident.id} className={`pp-incident-card ${incident.type.toLowerCase().replaceAll("_", "-")}${dismissing.has(incident.id) ? " is-dismissing" : ""}`}>
         <div className="pp-incident-topline"><span className="pp-incident-type">{labels[incident.type]}</span><time dateTime={incident.detectedAt}>Detected {new Date(incident.detectedAt).toLocaleString()}</time></div>
@@ -133,17 +137,15 @@ export function Incidents() {
         {draft && <div className="pp-incident-draft">
           <button type="button" className="pp-incident-draft-toggle" aria-expanded={expandedDrafts.has(incident.id)} onClick={() => setExpandedDrafts((current) => { const next = new Set(current); if (next.has(incident.id)) next.delete(incident.id); else next.add(incident.id); return next; })}>Draft ready — {demoSubject}<span>{expandedDrafts.has(incident.id) ? "Collapse draft" : "Expand draft"}</span></button>
           {expandedDrafts.has(incident.id) && <>
-          <div className="pp-incident-demo-label">DEMO FOR JUDGES · NOTHING IS SENT AUTOMATICALLY</div>
           <div><span>Subject</span><b>{demoSubject}</b></div>
           <div><span>Message draft</span><p>{demoBody}</p></div>
           <div className="pp-incident-delivery-controls">
             <label>Delivery option<select aria-label="Notification delivery option" value={channel} onChange={(event) => setChannels((current) => ({ ...current, [incident.id]: event.target.value as DeliveryChannel }))}><option value="EMAIL">Email draft</option><option value="CHATBOX">Chatbox copy</option></select></label>
-            {channel === "EMAIL" ? <label>Demo merchant email<input type="email" value={recipient} onChange={(event) => setRecipients((current) => ({ ...current, [incident.id]: event.target.value }))} placeholder="merchant@example.com"/></label> : <p className="pp-incident-chat-handoff">Copy the draft and paste it into your demo chatbox. No chat service is connected.</p>}
+            {channel === "EMAIL" ? <label>Merchant email<input type="email" value={recipient} onChange={(event) => setRecipients((current) => ({ ...current, [incident.id]: event.target.value }))} placeholder="merchant@example.com"/></label> : <p className="pp-incident-chat-handoff">Copy the draft and paste it into your communication channel.</p>}
           </div>
           <div className="pp-incident-draft-actions">
             {channel === "EMAIL" && (mailto ? <a href={mailto}>Open email draft</a> : <span className="pp-incident-invalid-email">Enter a valid email address to open the draft.</span>)}
             <button type="button" onClick={() => void copyDraft(incident.id, demoSubject, demoBody)}>{copied.has(incident.id) ? "Copied" : channel === "EMAIL" ? "Copy email draft" : "Copy for chatbox"}</button>
-            <small>Demo only · PayProof has not contacted this merchant.</small>
           </div>
           </>}
         </div>}

@@ -101,7 +101,7 @@ export default function AdminPage() {
             <TransactionSimulations/>
             <MerchantAnalytics/>
           </section>
-          <footer className="pp-footer"><span>PAYPROOF MERCHANT DESK</span><span>DEMO LEDGER · {data?.storage.toUpperCase() ?? "LOADING"}</span><span>FICTIONAL PAYMENT AND CUSTOMER DATA</span></footer>
+          <footer className="pp-footer"><span>PAYPROOF</span><span>PLATFORM ACTIVE</span></footer>
         </div>
         <AgentActions variant="rail"/>
       </div>

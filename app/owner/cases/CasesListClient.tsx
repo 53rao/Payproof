@@ -7,15 +7,20 @@ import "./owner-cases.css";
 
 type Complaint = { id: string; type: string; originalText: string; createdAt: string } | null;
 type CaseRow = { id: string; orderId: string; type: string; status: string; cause: string; createdAt: string; simulated: boolean; merchantId: string; merchantName: string; customerReplySaved: boolean; origin?: "AGENT" | "HUMAN" | "UNKNOWN"; agentHandled?: boolean; humanReviewRequired?: boolean; orderStatus?: string; total?: number; suggestedNextStep?: string; complaint: Complaint };
-const merchants = [{ id: "northstar", name: "Northstar Goods" }, { id: "fieldform", name: "Field & Form" }];
+type MerchantOption = { id: string; name: string };
 const columns = [{ id: "OPEN", title: "Open", hint: "Needs review" }, { id: "REVIEWED", title: "In review", hint: "Being handled" }, { id: "CLOSED", title: "Closed", hint: "Review complete" }];
 const issueLabel = (row: CaseRow) => row.complaint ? ({ ITEM_NOT_RECEIVED: "Item not received", ITEM_DIFFERENT: "Item different from description", PAYMENT_ISSUE: "Payment issue", OTHER: "Other" }[row.complaint.type] ?? row.complaint.type) : row.type.replaceAll("_", " ").toLowerCase();
 export default function CasesListClient() {
   const [cases, setCases] = useState<CaseRow[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [filter, setFilter] = useState("All merchants"); const [kind, setKind] = useState("All cases"); const [selected, setSelected] = useState<CaseRow | null>(null); const [waitingForStatusSave, setWaitingForStatusSave] = useState(false); const [saving, setSaving] = useState<string | null>(null);
+  const [merchants, setMerchants] = useState<MerchantOption[]>([]);
   useEffect(() => {
+    void fetch("/api/demo/merchant-analytics", { cache: "no-store" }).then(async (r) => {
+      const data = await r.json();
+      if (r.ok && data.merchants) setMerchants(data.merchants.map((m: { id: string; name: string }) => ({ id: m.id, name: m.name })));
+    }).catch(() => {});
     const params = new URLSearchParams(window.location.search);
     const requestedMerchant = params.get("merchantId");
-    const initialFilter = requestedMerchant && merchants.some((merchant) => merchant.id === requestedMerchant)
+    const initialFilter = requestedMerchant
       ? requestedMerchant
       : localStorage.getItem("payproof-owner-cases-merchant") ?? "All merchants";
     setFilter(initialFilter);
