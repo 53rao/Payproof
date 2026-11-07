@@ -12,7 +12,26 @@ const columns = [{ id: "OPEN", title: "Open", hint: "Needs review" }, { id: "REV
 const issueLabel = (row: CaseRow) => row.complaint ? ({ ITEM_NOT_RECEIVED: "Item not received", ITEM_DIFFERENT: "Item different from description", PAYMENT_ISSUE: "Payment issue", OTHER: "Other" }[row.complaint.type] ?? row.complaint.type) : row.type.replaceAll("_", " ").toLowerCase();
 export default function CasesListClient() {
   const [cases, setCases] = useState<CaseRow[]>([]); const [loading, setLoading] = useState(true); const [error, setError] = useState(""); const [filter, setFilter] = useState("All merchants"); const [kind, setKind] = useState("All cases"); const [selected, setSelected] = useState<CaseRow | null>(null); const [waitingForStatusSave, setWaitingForStatusSave] = useState(false); const [saving, setSaving] = useState<string | null>(null);
-  useEffect(() => { setFilter(localStorage.getItem("payproof-owner-cases-merchant") ?? "All merchants"); void fetch("/api/owner/cases", { cache: "no-store" }).then(async (r) => { const data = await r.json(); if (!r.ok) throw new Error(data.error ?? "Cases could not be loaded."); const rows: CaseRow[] = data.cases ?? []; setCases(rows); const requestedCase = new URLSearchParams(window.location.search).get("caseId"); if (requestedCase) { const matched = rows.find((row) => row.id === requestedCase); if (matched) setSelected(matched); } }).catch((e) => setError(e instanceof Error ? e.message : "Cases could not be loaded.")).finally(() => setLoading(false)); }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedMerchant = params.get("merchantId");
+    const initialFilter = requestedMerchant && merchants.some((merchant) => merchant.id === requestedMerchant)
+      ? requestedMerchant
+      : localStorage.getItem("payproof-owner-cases-merchant") ?? "All merchants";
+    setFilter(initialFilter);
+    if (initialFilter !== "All merchants") localStorage.setItem("payproof-owner-cases-merchant", initialFilter);
+    void fetch("/api/owner/cases", { cache: "no-store" }).then(async (r) => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error ?? "Cases could not be loaded.");
+      const rows: CaseRow[] = data.cases ?? [];
+      setCases(rows);
+      const requestedCase = params.get("caseId");
+      if (requestedCase) {
+        const matched = rows.find((row) => row.id === requestedCase);
+        if (matched) setSelected(matched);
+      }
+    }).catch((e) => setError(e instanceof Error ? e.message : "Cases could not be loaded.")).finally(() => setLoading(false));
+  }, []);
   const visible = useMemo(() => cases.filter((row) => (filter === "All merchants" || row.merchantId === filter) && (kind === "All cases" || (kind === "Customer complaints" ? Boolean(row.complaint) : row.type !== "CUSTOMER_COMPLAINT"))), [cases, filter, kind]);
   function chooseMerchant(value: string) { setFilter(value); localStorage.setItem("payproof-owner-cases-merchant", value); }
   async function moveCase(row: CaseRow, status: string) { if (row.status === status || saving) return false; if (status === "CLOSED" && !row.customerReplySaved) { setError("Save a customer reply draft for this case before closing it."); return false; } const previous = row.status; setSaving(row.id); setCases((items) => items.map((item) => item.id === row.id ? { ...item, status } : item)); try { const response = await fetch(`/api/owner/cases/${encodeURIComponent(row.id)}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) }); const data = await response.json().catch(() => ({})); if (!response.ok) throw new Error(data.error ?? "Case status could not be saved."); setError(""); return true; } catch (e) { setCases((items) => items.map((item) => item.id === row.id ? { ...item, status: previous } : item)); setError(e instanceof Error ? e.message : "Case status could not be saved."); return false; } finally { setSaving(null); } }

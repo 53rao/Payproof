@@ -1,16 +1,18 @@
 "use client";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import type { DemoState } from "@/components/admin/types";
-import { money } from "@/components/admin/format";
 import { SectionRail } from "@/components/admin/SectionRail";
 import { DashboardHeader } from "@/components/admin/DashboardHeader";
 import { Overview } from "@/components/admin/Overview";
+import { MerchantHealthSummary } from "@/components/admin/MerchantHealthSummary";
+import { MerchantAnalytics } from "@/components/admin/MerchantAnalytics";
+import { TransactionSimulations } from "@/components/admin/TransactionSimulations";
 import { PaymentEvents } from "@/components/admin/PaymentEvents";
 import { OrderManagement } from "@/components/admin/OrderManagement";
-import { InventorySnapshot } from "@/components/admin/InventorySnapshot";
-import { LiveDataStream } from "@/components/admin/LiveDataStream";
+import { Icon } from "@/components/admin/Icon";
+import { AgentActions } from "@/components/admin/AgentActions";
 import "./admin.css";
 
 gsap.registerPlugin(useGSAP);
@@ -21,21 +23,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState("");
-  const counterValues = useRef<Record<string, number>>({});
   const { contextSafe } = useGSAP({ scope: rootRef });
-
-  useGSAP(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches || !data) return;
-    gsap.utils.toArray<HTMLElement>(".pp-stat-value").forEach((element) => {
-      const key = element.dataset.counter ?? "metric";
-      const target = Number(element.dataset.target ?? 0);
-      const counter = { value: counterValues.current[key] ?? 0 };
-      counterValues.current[key] = target;
-      gsap.to(counter, { value: target, duration: 0.58, ease: "power2.out", snap: { value: 1 }, onUpdate: () => { element.textContent = String(Math.round(counter.value)); } });
-    });
-    gsap.fromTo(".pp-stat", { y: 4 }, { y: 0, duration: 0.35, stagger: 0.035, ease: "power2.out", clearProps: "transform" });
-    gsap.fromTo(".pp-meter i", { scaleX: 0, transformOrigin: "left" }, { scaleX: 1, duration: 0.42, stagger: 0.045, ease: "power2.out", clearProps: "transform" });
-  }, { scope: rootRef, dependencies: [data?.counters.paymentEvents, data?.counters.failedPayments, data?.counters.recoveredStock, data?.counters.stuckStock, data?.protected, data?.orders.length, data?.stock], revertOnUpdate: true });
 
   useGSAP(() => {
     if (!data || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -60,15 +48,6 @@ export default function AdminPage() {
     }, 15_000);
     return () => window.clearInterval(timer);
   }, [refresh]);
-  const feedEvents = useMemo(() => !data ? [] : data.orders.map((order) => ({
-    kind: "Payments" as const,
-    title: order.status === "FAILED" ? "Payment failed" : order.status === "PENDING" || order.status === "PROCESSING" ? "Payment pending" : "Payment captured",
-    ref: order.id,
-    detail: `${money(order.amount)}${order.issue ? ` · ${order.issue.replaceAll("_", " ")}` : ""}`,
-    time: order.createdAt,
-    failed: order.status === "FAILED",
-  })).sort((a, b) => Date.parse(b.time) - Date.parse(a.time)), [data]);
-  const totalStock = useMemo(() => data ? Object.values(data.stock).reduce((sum, count) => sum + count, 0) : 0, [data]);
   const failedOrders = data?.orders.filter((order) => order.status === "FAILED").length ?? 0;
   const totalOrders = data?.orders.length ?? 0;
   const failedRate = totalOrders ? Math.round((failedOrders / totalOrders) * 100) : 0;
@@ -109,16 +88,22 @@ export default function AdminPage() {
   return <main ref={rootRef} className="pp-shell">
     <SectionRail data={data}/>
     <div className="pp-app">
-      <DashboardHeader data={data} updating={updating} onReset={() => void reset()} onSignOut={signOut}/>
+      <DashboardHeader data={data} onSignOut={signOut}/>
       <div className="pp-workspace">
         <div className="pp-content">
-          <Overview data={data} loading={loading} error={error} events={feedEvents}/>
-          <PaymentEvents data={data} failedRate={failedRate} failedOrders={failedOrders} totalOrders={totalOrders} totalStock={totalStock} updating={updating} onToggle={() => void toggleProtection()}/>
+          <Overview error={error}/>
+          <MerchantHealthSummary/>
+          <PaymentEvents data={data} failedRate={failedRate} failedOrders={failedOrders} totalOrders={totalOrders}/>
           <OrderManagement data={data} loading={loading} totalOrders={totalOrders}/>
-          <InventorySnapshot data={data} loading={loading}/>
+          <section className="pp-screen pp-demo-tools" aria-labelledby="pp-demo-tools-title">
+            <div className="pp-hero"><div className="pp-title"><h1 id="pp-demo-tools-title">Demo Tools</h1><p>Sandbox testing controls — not visible to merchants.</p></div></div>
+            <button type="button" className="pp-reset-demo pp-demo-reset" onClick={() => void reset()} disabled={updating} title="Restore the demo data"><Icon name="refresh"/>{updating ? "Resetting…" : "Reset demo"}</button>
+            <TransactionSimulations/>
+            <MerchantAnalytics/>
+          </section>
           <footer className="pp-footer"><span>PAYPROOF MERCHANT DESK</span><span>DEMO LEDGER · {data?.storage.toUpperCase() ?? "LOADING"}</span><span>FICTIONAL PAYMENT AND CUSTOMER DATA</span></footer>
         </div>
-        <LiveDataStream events={feedEvents} loading={loading}/>
+        <AgentActions variant="rail"/>
       </div>
     </div>
   </main>;

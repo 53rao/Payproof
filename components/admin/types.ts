@@ -1,5 +1,5 @@
 export type DemoCase = { id: string; orderId: string; issue: string; debug_id?: string; createdAt: string; status: "OPEN"; agentHandled?: boolean; humanReviewRequired?: boolean };
-export type DemoOrder = { id: string; amount: number; status: string; createdAt: string; issue?: string; debug_id?: string; items: { id: string; quantity: number }[]; recoveredFromOrderId?: string; origin?: "AGENT" | "HUMAN" | "UNKNOWN" };
+export type DemoOrder = { id: string; amount: number; status: string; createdAt: string; issue?: string; debug_id?: string; transactionId?: string; items: { id: string; quantity: number }[]; recoveredFromOrderId?: string; origin?: "AGENT" | "HUMAN" | "UNKNOWN" };
 export type DemoState = {
   simulated: true;
   storage: string;
@@ -9,7 +9,7 @@ export type DemoState = {
   committedStock: Record<string, number>;
   orders: DemoOrder[];
   cases: DemoCase[];
-  counters: { paymentEvents: number; failedPayments: number; recoveredStock: number; stuckStock: number; openCases: number; recoveredRevenue: number; recoveredOrders: number };
+  counters: { paymentEvents: number; failedPayments: number; recoveredStock: number; stuckStock: number; openCases: number; agentFailureCases: number; humanFailureCases: number; recoveredRevenue: number; recoveredOrders: number };
 };
 export type FeedEvent = { kind: "Payments" | "Inventory"; title: string; ref: string; detail: string; time: string; failed: boolean };
 export type IconName = "grid" | "chart" | "shield" | "receipt" | "box" | "chevron" | "search" | "refresh" | "info" | "alert" | "arrow" | "filter" | "check" | "minus" | "expand";

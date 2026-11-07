@@ -22,6 +22,8 @@
     "@gsap/react": "^2.1.2",
     "@prisma/adapter-neon": "^6.19.3",
     "@prisma/client": "^6.19.3",
+    "ag-grid-community": "^36.3.0",
+    "ag-grid-react": "^36.3.0",
     "braintree": "^3.41.0",
     "braintree-web": "^3.148.0",
     "gsap": "^3.13.0",

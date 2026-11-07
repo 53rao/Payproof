@@ -8,14 +8,14 @@ datasource db {
 }
 
 model Product {
-  id             String            @id
+  id             String             @id
   name           String
-  priceCents     Int               @map("price_cents")
-  initialStock   Int               @default(12) @map("initial_stock")
-  availableStock Int               @default(12) @map("available_stock")
-  simulated      Boolean           @default(true)
-  merchantId     String            @default("northstar") @map("merchant_id")
-  merchant       Merchant          @relation(fields: [merchantId], references: [id])
+  priceCents     Int                @map("price_cents")
+  initialStock   Int                @default(12) @map("initial_stock")
+  availableStock Int                @default(12) @map("available_stock")
+  simulated      Boolean            @default(true)
+  merchantId     String             @default("northstar") @map("merchant_id")
+  merchant       Merchant           @relation(fields: [merchantId], references: [id])
   orderItems     OrderItem[]
   reservations   StockReservation[]
 
@@ -23,50 +23,64 @@ model Product {
 }
 
 model Merchant {
-  id        String    @id
-  name      String
-  simulated Boolean   @default(true)
-  products  Product[]
+  id           String           @id
+  name         String
+  simulated    Boolean          @default(true)
+  products     Product[]
+  agentActions AgentActionLog[]
+
   @@map("merchants")
 }
 
+model AgentActionLog {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type       String
+  merchantId String   @map("merchant_id")
+  detail     String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  merchant   Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([createdAt])
+  @@map("agent_action_logs")
+}
+
 model Owner {
-  id           String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email        String     @unique(map: "owners_email_unique")
-  passwordHash String     @map("password_hash")
-  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email        String    @unique(map: "owners_email_unique")
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   aiDrafts     AiDraft[]
 
   @@map("owners")
 }
 
 model Order {
-  id                String             @id
-  idempotencyKey    String             @unique(map: "orders_idempotency_key_unique") @map("idempotency_key")
-  cartFingerprint  String             @map("cart_fingerprint")
-  totalCents        Int                @map("total_cents")
-  status            OrderStatus        @default(PENDING)
-  simulated         Boolean            @default(true)
-  checkoutOrigin    CheckoutOrigin     @default(UNKNOWN) @map("checkout_origin")
-  customerAccessTokenHash String?       @map("customer_access_token_hash")
-  recoveredFromOrderId String?          @map("recovered_from_order_id")
-  createdAt         DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
-  items             OrderItem[]
-  reservations      StockReservation[]
-  paymentEvents     PaymentEvent[]
-  cases             Case[]
-  complaints        CustomerComplaint[]
+  id                      String              @id
+  idempotencyKey          String              @unique(map: "orders_idempotency_key_unique") @map("idempotency_key")
+  cartFingerprint         String              @map("cart_fingerprint")
+  totalCents              Int                 @map("total_cents")
+  status                  OrderStatus         @default(PENDING)
+  simulated               Boolean             @default(true)
+  checkoutOrigin          CheckoutOrigin      @default(UNKNOWN) @map("checkout_origin")
+  customerAccessTokenHash String?             @map("customer_access_token_hash")
+  recoveredFromOrderId    String?             @map("recovered_from_order_id")
+  createdAt               DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  items                   OrderItem[]
+  reservations            StockReservation[]
+  paymentEvents           PaymentEvent[]
+  cases                   Case[]
+  complaints              CustomerComplaint[]
 
   @@map("orders")
 }
 
 model OrderItem {
-  orderId       String  @map("order_id")
-  productId     String  @map("product_id")
-  quantity      Int
-  unitPriceCents Int    @map("unit_price_cents")
-  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "order_items_order_id_orders_id_fk")
-  product       Product @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_items_product_id_products_id_fk")
+  orderId        String  @map("order_id")
+  productId      String  @map("product_id")
+  quantity       Int
+  unitPriceCents Int     @map("unit_price_cents")
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "order_items_order_id_orders_id_fk")
+  product        Product @relation(fields: [productId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "order_items_product_id_products_id_fk")
 
   @@id([orderId, productId], map: "order_items_order_id_product_id_pk")
   @@map("order_items")
@@ -102,21 +116,21 @@ model PaymentEvent {
 }
 
 model Case {
-  id          String      @id
-  orderId     String      @map("order_id")
-  type        String
-  status      CaseStatus  @default(OPEN)
-  cause       String
-  uncertainty String
-  simulated   Boolean     @default(true)
-  agentHandled Boolean    @default(false) @map("agent_handled")
-  humanReviewRequired Boolean @default(false) @map("human_review_required")
-  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
-  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cases_order_id_orders_id_fk")
-  items       CaseItem[]
-  drafts      AiDraft[]
-  complaint   CustomerComplaint?
-  report      EvidenceReport?
+  id                  String             @id
+  orderId             String             @map("order_id")
+  type                String
+  status              CaseStatus         @default(OPEN)
+  cause               String
+  uncertainty         String
+  simulated           Boolean            @default(true)
+  agentHandled        Boolean            @default(false) @map("agent_handled")
+  humanReviewRequired Boolean            @default(false) @map("human_review_required")
+  createdAt           DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  order               Order              @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "cases_order_id_orders_id_fk")
+  items               CaseItem[]
+  drafts              AiDraft[]
+  complaint           CustomerComplaint?
+  report              EvidenceReport?
 
   @@map("cases")
 }

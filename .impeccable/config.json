@@ -14,6 +14,15 @@
         "value": "playfair display",
         "createdAt": "2026-10-31T09:43:09.298Z",
         "reason": "The storefront intentionally uses its existing storefront type system; DESIGN.md scopes its type guidance to /admin."
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "app/admin/admin.css"
+        ],
+        "createdAt": "2026-11-07T07:53:57.129Z",
+        "reason": "Agent: user explicitly specified colored incident-type left borders (red carding, amber failure spike, blue agent review)."
       }
     ]
   }

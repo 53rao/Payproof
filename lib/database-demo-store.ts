@@ -4,6 +4,7 @@ import { products } from "@/lib/products";
 import { INITIAL_DEMO_STOCK } from "@/lib/inventory";
 import { paymentProvider } from "@/lib/payment-provider";
 import { getDatabase } from "@/db/client";
+import { logAgentAction } from "@/lib/agent-action-log";
 
 type CartLine = { id: string; quantity: number };
 const initialStock = INITIAL_DEMO_STOCK;
@@ -163,12 +164,17 @@ async function releaseExpiredReservations(force = false) {
 async function releaseConfirmedFailureReservations() {
   const db = getDatabase();
   if (!db) return;
+  const protection = await db.protectionSetting.findUnique({ where: { id: 1 }, select: { enabled: true } });
+  const protectionEnabled = protection?.enabled ?? true;
   const heldRows = await db.stockReservation.findMany({
     where: { status: "HELD", order: { status: "FAILED" } },
-    select: { orderId: true, productId: true, quantity: true },
+    select: { orderId: true, productId: true, quantity: true, order: { select: { checkoutOrigin: true } } },
   });
   const grouped = new Map<string, typeof heldRows>();
-  for (const row of heldRows) grouped.set(row.orderId, [...(grouped.get(row.orderId) ?? []), row]);
+  for (const row of heldRows) {
+    if (!protectionEnabled && row.order.checkoutOrigin !== "AGENT") continue;
+    grouped.set(row.orderId, [...(grouped.get(row.orderId) ?? []), row]);
+  }
   for (const [orderId, reservations] of grouped) {
     await db.$transaction(async (tx) => {
       const claimed = await tx.stockReservation.updateMany({ where: { orderId, status: "HELD" }, data: { status: "RELEASED" } });
@@ -186,7 +192,7 @@ export async function getDatabaseDemoState() {
   await ensureSeeded();
   await releaseExpiredReservations();
   await releaseConfirmedFailureReservations();
-  const [productRows, settings, recentOrders, recentCases, reservationTotals, paymentCount, failedCount, openCaseCount, stuckTotals, releasedTotals, recoveredTotals] = await Promise.all([
+  const [productRows, settings, recentOrders, recentCases, reservationTotals, paymentCount, failedCount, openCaseCount, agentFailureCases, humanFailureCases, stuckTotals, releasedTotals, recoveredTotals] = await Promise.all([
     db.product.findMany(),
     db.protectionSetting.findUnique({ where: { id: 1 } }),
     db.order.findMany({ orderBy: { createdAt: "desc" }, take: 12, include: { items: true } }),
@@ -195,6 +201,8 @@ export async function getDatabaseDemoState() {
     db.paymentEvent.count(),
     db.paymentEvent.count({ where: { type: "CAPTURE_RESULT", paymentStatus: "FAILED" } }),
     db.case.count({ where: { status: "OPEN" } }),
+    db.case.count({ where: { status: "OPEN", type: "PAYMENT_FAILURE", agentHandled: true } }),
+    db.case.count({ where: { status: "OPEN", type: "PAYMENT_FAILURE", order: { is: { checkoutOrigin: "HUMAN" } } } }),
     db.stockReservation.aggregate({ where: { status: "HELD", order: { status: "FAILED" } }, _sum: { quantity: true } }),
     db.stockReservation.aggregate({ where: { status: "RELEASED" }, _sum: { quantity: true } }),
     db.order.aggregate({ where: { recoveredFromOrderId: { not: null }, status: "PAID" }, _sum: { totalCents: true }, _count: { _all: true } }),
@@ -209,7 +217,7 @@ export async function getDatabaseDemoState() {
     where: { orderId: { in: relevantOrderIds }, type: "CAPTURE_RESULT" },
     orderBy: { createdAt: "desc" },
     take: relevantOrderIds.length * 2,
-    select: { orderId: true, issue: true, debugId: true },
+    select: { orderId: true, issue: true, debugId: true, rawJson: true },
   }) : [];
   const latestEvents = new Map<string, (typeof events)[number]>();
   for (const event of events) if (!latestEvents.has(event.orderId)) latestEvents.set(event.orderId, event);
@@ -223,13 +231,15 @@ export async function getDatabaseDemoState() {
     committedStock,
     orders: recentOrders.map((order) => {
       const event = latestEvents.get(order.id);
-      return { id: order.id, amount: order.totalCents / 100, status: order.status, createdAt: order.createdAt.toISOString(), items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), issue: event?.issue ?? undefined, debug_id: event?.debugId ?? undefined, recoveredFromOrderId: order.recoveredFromOrderId ?? undefined, simulated: order.simulated, origin: order.checkoutOrigin };
+      const raw = event?.rawJson;
+      const transactionId = raw && typeof raw === "object" && !Array.isArray(raw) && "transactionId" in raw && typeof raw.transactionId === "string" ? raw.transactionId : undefined;
+      return { id: order.id, amount: order.totalCents / 100, status: order.status, createdAt: order.createdAt.toISOString(), items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), issue: event?.issue ?? undefined, debug_id: event?.debugId ?? undefined, transactionId, recoveredFromOrderId: order.recoveredFromOrderId ?? undefined, simulated: order.simulated, origin: order.checkoutOrigin };
     }),
     cases: recentCases.map((item) => {
       const event = latestEvents.get(item.orderId);
       return { id: item.id, orderId: item.orderId, issue: event?.issue ?? item.cause, debug_id: event?.debugId ?? undefined, createdAt: item.createdAt.toISOString(), status: item.status, agentHandled: item.agentHandled, humanReviewRequired: item.humanReviewRequired };
     }),
-    counters: { paymentEvents: paymentCount, failedPayments: failedCount, recoveredStock: releasedStock, stuckStock, openCases: openCaseCount, recoveredRevenue: (recoveredTotals._sum.totalCents ?? 0) / 100, recoveredOrders: recoveredTotals._count._all },
+    counters: { paymentEvents: paymentCount, failedPayments: failedCount, recoveredStock: releasedStock, stuckStock, openCases: openCaseCount, agentFailureCases, humanFailureCases, recoveredRevenue: (recoveredTotals._sum.totalCents ?? 0) / 100, recoveredOrders: recoveredTotals._count._all },
   };
 }
 
@@ -290,11 +300,16 @@ async function readExistingOrder(db: NonNullable<ReturnType<typeof getDatabase>>
   return { id: order.id, amount: order.totalCents / 100, items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), simulated: order.simulated, origin: order.checkoutOrigin, repeated: true };
 }
 
-export async function captureDatabaseOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string) {
+export async function captureDatabaseOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string, failedInventoryPolicy: "existing" | "respect-protection" = "existing") {
   const db = getDatabase();
   if (!db) throw new Error("DATABASE_URL is not configured.");
   await releaseExpiredReservations(true);
-  const orderOrigin = (await db.order.findUnique({ where: { id: orderId }, select: { checkoutOrigin: true } }))?.checkoutOrigin ?? "UNKNOWN";
+  const orderContext = await db.order.findUnique({
+    where: { id: orderId },
+    select: { checkoutOrigin: true, items: { select: { productId: true, product: { select: { name: true, merchantId: true, merchant: { select: { name: true } } } } } } },
+  });
+  if (!orderContext) throw new Error("Order not found in the simulated ledger.");
+  const orderOrigin = orderContext.checkoutOrigin;
   const agentHandled = orderOrigin === "AGENT";
   const claimed = await db.order.updateMany({ where: { id: orderId, status: "PENDING" }, data: { status: "PROCESSING" } });
   if (!claimed.count) {
@@ -322,20 +337,40 @@ export async function captureDatabaseOrder(orderId: string, outcome: "success" |
         return;
       }
       const held = await tx.stockReservation.findMany({ where: { orderId, status: "HELD" } });
+      const protection = failedInventoryPolicy === "respect-protection" ? await tx.protectionSetting.findUnique({ where: { id: 1 }, select: { enabled: true } }) : null;
+      const releaseFailedInventory = agentHandled || failedInventoryPolicy === "existing" || (protection?.enabled ?? true);
+      const caseId = `CASE-${randomUUID().slice(0, 8).toUpperCase()}`;
       await tx.case.create({
         data: {
-          id: `CASE-${randomUUID().slice(0, 8).toUpperCase()}`, orderId, type: "PAYMENT_FAILURE", cause: payment.issue ?? "Payment failed", uncertainty: simulated ? "Simulated provider result; this does not establish customer intent." : "A Braintree Sandbox payment failed; this does not establish customer intent.", status: "OPEN", simulated, agentHandled, humanReviewRequired: agentHandled,
+          id: caseId, orderId, type: "PAYMENT_FAILURE", cause: payment.issue ?? "Payment failed", uncertainty: simulated ? "Simulated provider result; this does not establish customer intent." : "A Braintree Sandbox payment failed; this does not establish customer intent.", status: "OPEN", simulated, agentHandled, humanReviewRequired: agentHandled,
           items: { create: [
             { kind: "order", referenceId: orderId, completeness: "PRESENT", payload: { orderId } },
             { kind: "payment_event", referenceId: orderId, completeness: "PRESENT", payload: { issue: payment.issue ?? null, debug_id: payment.debug_id ?? null } },
             ...(outcome !== "success" ? [{ kind: "checkout_issue_report", referenceId: orderId, completeness: "PRESENT", payload: { issueType: issueType ?? "OTHER", originalText: issueDetails ?? "" } }] : []),
-            { kind: "stock_reservation", referenceId: orderId, completeness: "RELEASED", payload: { units: held.reduce((sum, item) => sum + item.quantity, 0) } },
+            { kind: "stock_reservation", referenceId: orderId, completeness: releaseFailedInventory ? "RELEASED" : "PRESENT", payload: { units: held.reduce((sum, item) => sum + item.quantity, 0), status: releaseFailedInventory ? "RELEASED" : "HELD" } },
             { kind: "fulfillment", completeness: "MISSING", payload: { note: "No fulfillment record is connected in this demo." } },
           ] },
         },
       });
-      for (const reservation of held) await tx.product.update({ where: { id: reservation.productId }, data: { availableStock: { increment: reservation.quantity } } });
-      await tx.stockReservation.updateMany({ where: { orderId, status: "HELD" }, data: { status: "RELEASED" } });
+      if (releaseFailedInventory) {
+        for (const reservation of held) await tx.product.update({ where: { id: reservation.productId }, data: { availableStock: { increment: reservation.quantity } } });
+        await tx.stockReservation.updateMany({ where: { orderId, status: "HELD" }, data: { status: "RELEASED" } });
+      }
+      if (agentHandled) {
+        if (releaseFailedInventory) {
+          for (const reservation of held) {
+            const item = orderContext.items.find((line) => line.productId === reservation.productId);
+            if (!item) continue;
+            await logAgentAction("RESERVATION_RELEASED", item.product.merchantId, `Released checkout reservation — ${item.product.merchant.name} · ${item.product.name} · Agent checkout failed.`, tx);
+          }
+        }
+        const merchantItems = new Map<string, (typeof orderContext.items)[number]>();
+        for (const item of orderContext.items) merchantItems.set(item.product.merchantId, item);
+        for (const item of merchantItems.values()) {
+          await logAgentAction("CASE_ESCALATED", item.product.merchantId, `Escalated to human review — ${item.product.merchant.name} · Case ${caseId} opened automatically.`, tx);
+          await logAgentAction("RECOVERY_SUPPRESSED", item.product.merchantId, `Win-back suppressed — ${item.product.merchant.name} · Agent-initiated failure does not receive a customer recovery link.`, tx);
+        }
+      }
     });
   } catch (error) {
     const current = await db.order.findUnique({ where: { id: orderId }, select: { status: true } });
@@ -343,6 +378,25 @@ export async function captureDatabaseOrder(orderId: string, outcome: "success" |
     throw error;
   }
   return { payment, state: await getDatabaseDemoState() };
+}
+
+export async function listDatabaseDashboardSimulations() {
+  const db = getDatabase();
+  if (!db) throw new Error("DATABASE_URL is required for dashboard simulations.");
+  const orders = await db.order.findMany({
+    where: { idempotencyKey: { startsWith: "SIMDASH-" } },
+    orderBy: { createdAt: "desc" },
+    take: 100,
+    include: { paymentEvents: { where: { type: "CAPTURE_RESULT" }, orderBy: { createdAt: "desc" }, take: 1 }, cases: { select: { id: true }, take: 1 } },
+  });
+  return orders.map((order) => {
+    const keyParts = order.idempotencyKey.split("-");
+    const scenario = `${keyParts[1]?.toLowerCase() ?? "unknown"}_${keyParts[2]?.toLowerCase() ?? "unknown"}`;
+    const event = order.paymentEvents[0];
+    const raw = event?.rawJson;
+    const transactionId = raw && typeof raw === "object" && !Array.isArray(raw) && "transactionId" in raw && typeof raw.transactionId === "string" ? raw.transactionId : undefined;
+    return { id: order.id, scenario, origin: order.checkoutOrigin, outcome: event?.paymentStatus ?? order.status, transactionId, caseCreated: order.cases.length > 0, createdAt: order.createdAt.toISOString() };
+  });
 }
 
 export async function setDatabaseProtection(enabled: boolean) {

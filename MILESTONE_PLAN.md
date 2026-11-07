@@ -1,11 +1,10 @@
-# PayProof Masterplan and Agent Handoff (M1–M5)
+# PayProof Masterplan and Agent Handoff (M1–M8)
 
 This is the canonical project handoff and milestone file. Read it before resuming work. It records decisions made in chat, current implementation status, relevant code paths, and what remains open. Update this file when the user approves a decision or a milestone changes state.
 
 ## Resume instructions
 
-- M1–M4 are complete and hosted on the existing Vercel project. M5 merchant analytics is complete locally; M5 transaction simulations are the next open implementation area.
-- Do not start implementing the simulations until the user chooses the simulation source: deterministic demo-ledger events or actual Braintree Sandbox transactions. A Sandbox nonce-based option has been discussed but not approved.
+- M1–M8 are implemented locally; M1–M4 are hosted on the existing Vercel project. M6 includes a judge-demo email/chatbox handoff but no connected delivery provider. M7 adds merchant case health and an auditable agent action log. M8 refines the admin dashboard hierarchy and removes misleading/redundant views.
 - After each milestone, stop and wait for the user's direction before starting another milestone.
 - Preserve the current color palette and existing merchant/case behavior unless the user asks to change it.
 - The user already has all 12 local environment variables configured and uses an existing Neon cloud database. Do not ask for their secret values; never read or print `.env` values or commit local secrets.
@@ -18,8 +17,10 @@ This is the canonical project handoff and milestone file. Read it before resumin
 - M1 and M2 are complete. A successful agent checkout against the deployed endpoint remains explicitly deferred.
 - M3 (merchant-aware cases) is complete and hosted.
 - M4 (case Kanban and full modal workspace) is complete and hosted.
-- M5 merchant analytics is implemented and locally verified.
-- M5's four transaction simulations and their underlying payment source are unresolved and not implemented.
+- M5 merchant analytics and four Braintree Sandbox transaction simulations are implemented and locally verified.
+- M6 incident detection, owner actions, dashboard UI, and judge-demo notification handoff are implemented locally; see the verification notes below.
+- M7 merchant case health, per-merchant case breakdown, case-threshold incident, recent-order attribution, failure-rate context, and agent action log are implemented locally; see the verification notes below.
+- M8 admin dashboard cleanup, Network Overview/Demo Tools split, collapsed incident drafts, ledger-metric cleanup, and the restored Agent Actions activity rail are implemented locally; see the verification notes below.
 - The current local Git branch was `main` when this file was expanded. Recheck `git status` before making a commit; deployed code may already be ahead of or differ from the current working tree.
 - The existing Vercel project hosts M2, M3, and M4. Do not create a second Vercel project. If a deployment issue comes up, inspect the deployment's commit and environment before changing configuration.
 - The user ran `npm run db:migrate` against their existing Neon database and reported that local M3 works. The migration `prisma/migrations/20261107100000_merchants/migration.sql` should be included in a Git commit. Before any future production database change, confirm the target database and migration status; do not rerun `migrate dev` against production just by habit.
@@ -118,63 +119,107 @@ Relevant paths:
 - `app/api/owner/cases/route.ts`, `app/api/owner/cases/[caseId]/route.ts`, `/status`, `/close`, `/notes`, `/recovery-link` — API routes remain.
 - `lib/customer-case-store.ts`, `lib/case-assistant.ts` — case records, merchant derivation, draft gating, evidence and assistant behavior.
 
-## M5 — Merchant dashboard and transaction simulations — IN PROGRESS
+## M5 — Merchant dashboard and transaction simulations — COMPLETE LOCALLY
 
-### Complete
+### Merchant dashboard
 
 - [x] Show merchant-level dashboard analytics using existing ledger data.
 - [x] Group payment events, failures, released/stuck stock, recovered orders/revenue, and order counts by merchant.
-- [x] User confirmed the analytics works locally against the configured Neon database.
+- [x] Add deterministic failure classification, merchant health badges, case-derived AI Assist counts (no Groq call), product names and origin badges for recent orders, and remove the Inventory Snapshot panel. Preserve payment-event polling while removing its redundant refresh label.
+- [x] Explain event-count differences: a payment event for an order containing products from multiple merchants is attributed to each merchant row, while the global total counts unique ledger events. The view now shows merchant attributions, unique events, and overlap.
+- [x] Verify the dashboard changes in the authenticated local browser.
 
-### Still open
+### Transaction simulations
 
-- [ ] Add four dashboard transaction simulations:
-  - [ ] Human success.
-  - [ ] Human failure.
-  - [ ] Agent success.
-  - [ ] Agent failure.
-- [ ] Decide whether dashboard runs create deterministic `simulated` ledger records or actual Braintree Sandbox transactions.
-- [ ] Verify each scenario updates payment/order status, stock reservations, checkout origin, case creation/human-review flags, and merchant analytics as appropriate.
-- [ ] Verify repeated runs, idempotency, reset behavior, empty/low-stock conditions, loading/errors, and no duplicate or inconsistent ledger rows.
-
-### Transaction/nonce discussion — NOT YET APPROVED
-
-The user remembered a Braintree nonce. The current regular checkout uses Hosted Fields to produce a `paymentMethodNonce`; `/api/connector/checkout` requires it and sends it to Braintree. A nonce is a secure single-use reference to payment details, not raw card data or a reusable customer credential. Braintree also documents static test nonces such as `fake-valid-nonce` for Sandbox server-side testing. Sandbox test transaction outcome can be selected by the **server-calculated amount** (for example, normal sub-$2,000 amounts authorize; `$2,000–$2,999.99` processor-decline; `$3,000–$3,000.99` failure response). Verify the exact current Braintree Sandbox reference before coding against those thresholds.
-
-Sources for the next agent:
-
-- [Braintree payment method nonces](https://developer.paypal.com/braintree/docs/guides/payment-method-nonces)
-- [Braintree Sandbox testing values](https://developer.paypal.com/braintree/docs/reference/general/testing/node)
-- [Braintree transaction sale](https://developer.paypal.com/braintree/docs/reference/request/transaction/sale/node)
-
-Two directions remain under discussion:
-
-1. **Deterministic demo ledger:** use the app's simulated provider/business logic, mark every row simulated, avoid Braintree calls, and make outcomes repeatable. This is easiest to demo and avoids consuming Sandbox transaction runs.
-2. **Actual Sandbox transaction:** a server-side owner-only simulation route can use a documented Sandbox test nonce and a server-chosen amount/cart. This creates real Braintree Sandbox transactions (no real money) and exercises the provider integration. Keep the nonce/server credentials server-side; do not expose `CONNECTOR_SHARED_SECRET` in browser code. Standard agent checkout should continue to accept a nonce produced by the client authorization flow.
-
-The user has **not** chosen between these. Do not build both automatically and do not treat the assistant's suggested Sandbox approach as approval. Ask which direction they want before implementation. Also settle whether dashboard controls are four separate buttons or a scenario selector, and whether each run should create a fresh order (recommended) while duplicate submissions with the same idempotency key return the existing result.
-
-### M5 behavior requirements
-
-- Keep human, agent, and unknown origin semantics intact. Never mark a transaction `HUMAN` unless the human has confirmed it.
-- Calculate totals from server-side product data; ignore client-supplied amounts. Use unique server-issued idempotency keys per deliberate run.
-- Reuse the existing order/payment/inventory/case business logic rather than writing a parallel “demo-only” state machine.
-- Human success: completed payment, committed inventory, correct HUMAN origin, and no failure case unless existing rules require one.
-- Human failure: failed payment, case/evidence as current human flow dictates, and inventory behavior respects the existing protection toggle.
-- Agent success: completed payment, committed inventory, AGENT origin, and no failure case.
-- Agent failure: failed payment, release reserved inventory per M2 agent-failure behavior, create human-review case, and provide alternate-payment guidance; never send a customer message automatically.
-- Clearly label whether a run is `SIMULATED` or `BRAINTREE SANDBOX`; never claim a real charge or customer notification.
-- Dashboard simulation endpoints must require owner authorization. Do not make an owner-only simulation callable through an unprotected public route. Keep live connector authentication separate from dashboard UI.
-- In the Sandbox direction, verify the fixed cart total against available stock and current item quantity limits. The existing local agent test uses a `$28` success cart and a `$2,200` decline cart; inspect `app/dev/agent-checkout/AgentCheckoutClient.tsx` and server validation before reusing that pattern.
+- [x] Use actual Braintree Sandbox transactions, as specified by the user. Current official test values were checked before implementation: `fake-valid-nonce` for successes and `fake-processor-declined-visa-nonce` for failures. The fixed product carts are server-selected and totals come from existing catalog/order logic.
+- [x] Add owner-authenticated `GET` and `POST /api/demo/simulations`; each deliberate run gets a new server-generated idempotency key. No client-supplied amount, nonce, or cart is accepted.
+- [x] Reuse existing order creation/capture/payment/inventory/case logic. Human failed simulations respect the protection toggle; agent failures release stock regardless of the toggle and create a case requiring human review. No win-back or customer message is sent.
+- [x] Add the four requested scenarios (HUMAN/AGENT × success/failure) and the owner dashboard selector, result card, Sandbox label, and AG Grid Community simulation history.
+- [x] Run all four scenario types against the local Braintree Sandbox and confirm their payment outcome, transaction ID, origin, case creation, and inventory behavior in the local dashboard and state. One additional human-failure run was used while correcting a background reservation-sweeper interaction; the test order was repaired to match the protection-off behavior.
+- [x] Verify local dashboard rendering and simulation history.
+- [ ] Automated typecheck/build remains blocked by existing TypeScript errors in the already-modified `components/BraintreePaymentForm.tsx` (`HostedFieldsInstance.getState` and `field` typed as `unknown`); no errors were reported in the files changed for this work.
+- [ ] Runtime edge cases (reset behavior, empty/low stock, and forced provider/database errors) were inspected in the code paths but not separately exercised.
 
 Relevant paths:
 
-- `components/admin/Overview.tsx`, `components/admin/MerchantAnalytics.tsx`, `app/api/demo/merchant-analytics/route.ts` — analytics and admin view.
-- `app/api/checkout/create/route.ts`, `app/api/checkout/capture/route.ts` — human/storefront checkout APIs.
-- `app/api/connector/checkout/route.ts` — real authenticated agent checkout; requires database, Braintree Sandbox credentials, idempotency key, items, and payment nonce.
-- `app/api/dev/agent-checkout/route.ts` and `app/dev/agent-checkout/AgentCheckoutClient.tsx` — development-only agent test surface; do not expose as production dashboard logic.
-- `lib/payment-provider.ts`, `lib/braintree.ts`, `lib/demo-store.ts`, `lib/database-demo-store.ts` — common provider and ledger implementation.
-- `app/admin/admin.css` — current admin visual system. Preserve the existing palette.
+- `components/admin/Overview.tsx`, `components/admin/PaymentEvents.tsx`, `components/admin/MerchantAnalytics.tsx`, `components/admin/OrderManagement.tsx`, and `app/admin/admin.css` — dashboard.
+- `components/admin/TransactionSimulations.tsx` — simulation controls, result, and AG Grid Community history.
+- `app/api/demo/simulations/route.ts` — owner-authenticated simulation API and fresh run keys.
+- `lib/demo-store.ts`, `lib/database-demo-store.ts` — shared checkout capture and inventory/case behavior; failed human simulation reservation policy is explicit and default checkout behavior remains intact.
+- `package.json` — `ag-grid-react` and `ag-grid-community` dependencies.
+
+## M6 — Active incidents — IMPLEMENTED LOCALLY
+
+- [x] Add server-only detection from existing payment events, cases, and product-to-merchant ownership; no schema or table changes.
+- [x] Detect 15-minute failure spikes and five-minute repeated failed orders from `CAPTURE_RESULT` events, plus open agent cases with `humanReviewRequired` and `agentHandled` flags.
+- [x] Add owner-authenticated GET/POST `/api/admin/incidents` actions. Merchant notification drafts use Groq and are returned for owner review; no email is sent. Monitoring flags are logged; dismissals are session-local and do not write to the database.
+- [x] Add the active-incidents UI inside the Overview snap section, with 15-second polling, merchant-specific cards, draft/mailto/copy affordances, flagging, and dismissal. The section renders nothing when no incidents remain visible.
+- [x] Add a per-incident delivery selector for an email draft or chatbox copy. Email recipient defaults to `raox58@gmail.com` (provided by the user for the judge demo) and can be edited with email validation.
+- [x] Mark notification drafts as judge-demo content in the subject and body, and show “DEMO FOR JUDGES · NOTHING IS SENT AUTOMATICALLY” in the panel. Email opens a prefilled `mailto:` draft; chatbox mode copies the demo text for manual paste. No email or chat provider is connected, and neither action sends a message automatically.
+- [x] Local verification: five recent HUMAN failure simulations produced Northstar Goods failure-spike and carding incidents; an existing open Field & Form agent-failure case produced an agent-review incident. Groq returned a subject/body draft, flagging disabled the flag button, and dismissing cards hid them from the page.
+- [ ] A completely quiet baseline could not be observed because the existing Neon ledger already contained an open AGENT case marked for human review. That existing case was not modified; failure-spike and carding incidents were absent before the new failure simulations. The empty UI was confirmed after dismissing all visible incidents.
+- [x] Verify in the running local dashboard that the demo recipient defaults to `raox58@gmail.com`, the generated `mailto:` href encodes the recipient/subject/body, Email draft and Chatbox copy switch the relevant controls, the chatbox handoff explains that no chat service is connected, and the copy action reaches its “Copied” state. Opening an external mail client and reading back the system clipboard were not independently verified in this browser session.
+- [ ] `npm run typecheck` still reports the four existing errors in `components/BraintreePaymentForm.tsx`; the incident files introduced no reported type errors.
+
+Relevant paths:
+
+- `lib/incident-detector.ts` — server-only incident queries and deterministic classification.
+- `lib/incident-notifications.ts` — Groq merchant-email draft generation.
+- `app/api/admin/incidents/route.ts` — owner-authenticated incident API and actions.
+- `components/admin/Incidents.tsx`, `components/admin/Overview.tsx`, `app/admin/admin.css` — polling UI, card actions, and styling.
+
+## M7 — Merchant case health and agent action audit — COMPLETE LOCALLY
+
+- [x] Replace the Order Safety card in the payment-events section with a dark Merchant Health Summary. It shows each merchant's open case count, failure rate from the existing merchant analytics, the established Low data / Critical / Watch / Healthy thresholds, and a case-board link with that merchant preselected. No protection state or stock counts are shown in this panel.
+- [x] Replace AI Assist's global case counters with Northstar Goods and Field & Form case breakdowns. Each merchant name links to its prefiltered case board; each row shows open cases, human failure cases needing action, and the `X need action` line. The existing Review open cases link remains.
+- [x] Add `CASE_THRESHOLD_EXCEEDED` at five or more open cases per merchant. It reports count and oldest case age, uses only Notify Merchant and Dismiss, and the Groq draft explicitly states the open-case count and age and recommends signing into the case desk. Local data produced a Northstar incident at 8 open cases, with the oldest case 285.9 hours old; the draft rendered in the dashboard.
+- [x] Update recent orders to show product name, merchant and origin checkout type, and a muted transaction ID below it.
+- [x] Show the reset-context note below failure classification only when the failure proportion exceeds 60%. Verified at 83% in the local dashboard.
+- [x] Add the read-only Agent Actions panel below Incidents and above Store overview. It polls every 15 seconds, shows the requested empty state, and renders the three allowed types with green/blue/amber borders.
+- [x] Add the `AgentActionLog` Prisma model/table and owner-authenticated GET `/api/admin/agent-actions`. Agent failure logging is written inside the same database transaction as the case and reservation changes, with merchant and product facts taken from the order.
+- [x] Run one AGENT_FAILURE simulation in the local Braintree Sandbox. It completed as FAILED, transaction ID `gqd29b2k`, created case `CASE-C40C7BFC`, and showed all three actions: reservation released for Field notes journal, case escalated, and win-back suppressed.
+- [x] Verify the merchant preselection link in the case board (Field & Form selected, four matching cases), the Merchant Health values, case-breakdown links, order attribution, failure context note, threshold incident and draft, and all three action rows in the running local dashboard.
+- [x] `AgentActionLog` migration was applied successfully and its records were read through the owner API after the simulation. `prisma migrate dev --name add_agent_action_log` itself is blocked by an earlier shadow replay failure in the already-applied merchant migration (`order_items` seed references a product absent from the shadow DB). To avoid changing an applied migration/checksum, the additive M7 migration was applied with `prisma migrate deploy` instead.
+- [ ] `npm run typecheck` still reports the four existing Hosted Fields errors in `components/BraintreePaymentForm.tsx` (`getState` missing and `field` typed as unknown); it reported no errors in the M7 files.
+
+Known M7 data limitation: the current recovery-link endpoint generates a link on request but does not persist that a link was sent. `Cases needing action` therefore counts open HUMAN payment-failure cases; PayProof does not send recovery links automatically. Persisting link-sent state would be a separate data-model change.
+
+Relevant paths:
+
+- `components/admin/MerchantHealthSummary.tsx`, `components/admin/MerchantCaseBreakdown.tsx`, `components/admin/AgentActions.tsx` — the three new dashboard views.
+- `app/api/demo/merchant-analytics/route.ts`, `app/owner/cases/CasesListClient.tsx` — per-merchant case data and query-string preselection.
+- `lib/incident-detector.ts`, `lib/incident-notifications.ts`, `components/admin/Incidents.tsx`, `app/api/admin/incidents/route.ts` — threshold detection, draft handling, and available incident actions.
+- `lib/agent-action-log.ts`, `app/api/admin/agent-actions/route.ts`, `prisma/schema.prisma`, `prisma/migrations/20261107120000_agent_action_log/migration.sql` — durable action log model, migration, and API.
+- `lib/database-demo-store.ts` — transaction-bound agent action logging for failed agent orders.
+- `components/admin/PaymentEvents.tsx`, `components/admin/OrderManagement.tsx`, `components/admin/Overview.tsx`, `app/admin/admin.css`, and `app/admin/page.tsx` — panel replacements, presentation, and positioning.
+
+## M8 — Admin dashboard hierarchy and demo/operations split — COMPLETE LOCALLY
+
+- [x] Remove the Latest activity panel from the admin dashboard and remove `LiveDataStream` from `app/admin/page.tsx`. Repository search confirmed it was only used by the removed activity surface; the component source file remains unused and available, with no other runtime consumer.
+- [x] Remove the Store overview hero/date and payment events, failed payments, stock protected, still reserved, and recovered sales counter row.
+- [x] Restructure the dashboard into **Network Overview** followed by **Demo Tools**, separated by a horizontal divider while retaining the existing dashboard palette, cards, and typography. Network Overview order is Incidents, Merchant Health Summary, Payment events, Case activity by merchant, and Recent orders. Agent Actions occupies the restored right activity rail. Demo Tools contains transaction simulations/history, the reset control (with the existing refresh icon/button styling), and **Demo ledger metrics**.
+- [x] Move Reset demo from the top navigation into Demo Tools; the reset API/handler remains unchanged. Sign-out remains in the top navigation.
+- [x] Collapse generated incident drafts by default to a single “Draft ready — [subject]” disclosure line. Expand/collapse reveals or hides the existing subject/body, delivery selector, mailto, and copy controls. Local browser verification generated a draft, confirmed the collapsed subject line, expanded it to inspect the content, and confirmed the toggle state.
+- [x] Remove “Stock released” and “Still reserved” from the demo ledger table. Remaining columns are Merchant, Events, Failed, Recovered sales, and Health. The footnote now explains event-attribution overlap only.
+- [x] Change the Payment events subtitle to “Recent checkout outcomes across connected merchants.”
+- [x] Verify in the authenticated local dashboard that the removed activity/counter sections are absent; Network Overview and Demo Tools appear in the requested order; the reset and simulation controls plus five-column table are under Demo Tools; the six requested operational panels are under Network Overview; the email draft collapses and expands; and the new subtitle and table columns are visible.
+- [ ] `npm run typecheck` remains blocked by the same four existing `components/BraintreePaymentForm.tsx` errors (`HostedFieldsInstance.getState` and `field` typed as `unknown`); no M8 files were reported in the errors. `git diff --check` passes.
+- [x] No database schema/migration or payment/case/agent-action behavior changed in M8. Existing palette and M1–M7 behavior were preserved; the demo reset handler and 15-second polling remain in place.
+- [x] Follow-up visual correction: restored the prior `.pp-hero` / `.pp-title` section-heading treatment and original two-column case-activity/recent-orders layout where the existing responsive breakpoint allows it. Removed the new tinted Demo Tools background and custom heading treatment; the Demo Tools divider and content labels remain. The moved reset control uses the original button styling and icon.
+- [x] Restore the right-side activity rail using the existing Agent Actions data, 15-second polling, and empty state. The rail title is “Agent Actions” with the subheading “Automatic responses taken by PayProof”; payment events are not placed in the rail. At the existing responsive breakpoint (1120px and below), the rail stacks beneath the main content, matching the prior activity-rail behavior. Verified at a 1280px desktop viewport and restored the browser to its default viewport afterward.
+- [x] Follow-up visual refinement: removed the empty viewport-height gap below Network Overview, set a deliberate 22px separation between Active Incidents and Merchant Health Summary, and restored the original near-black panel surfaces in place of the navy overrides. Agent Actions rail rows now use the existing activity-feed typography/layout with subdued action-color icons. Verified incident-to-health spacing, dark surfaces, and readable action rows in the local browser.
+
+Relevant paths:
+
+- `app/admin/page.tsx`, `app/admin/admin.css`, `components/admin/Overview.tsx`, and `components/admin/DashboardHeader.tsx` — section hierarchy, styling, Agent Actions rail, and reset-control placement.
+- `components/admin/PaymentEvents.tsx`, `components/admin/OrderManagement.tsx`, `components/admin/MerchantAnalytics.tsx`, and `components/admin/Incidents.tsx` — operational copy/order, demo ledger fields, and collapsible email drafts.
+
+## Next work
+
+- M1–M8 are implemented locally; M1–M4 remain user-confirmed as hosted. M5–M8 are not deployed. Do not create another Vercel project.
+- The next product area is the **merchant portal**. Its exact scope and access model are open for the user to define before implementation.
+- Other open items: resolve the existing Braintree Hosted Fields typecheck errors; decide whether merchant contact and recovery-link sent state should become persisted data; and decide when to deploy M5–M8 to the existing Vercel project.
+- Real incident notifications remain draft/copy only. A future direct email/chat delivery feature needs a chosen provider and authorized sender/account. The judge-demo recipient remains `raox58@gmail.com`, editable per incident and not a verified merchant contact record.
 
 ## Deployment and verification status
 
@@ -187,4 +232,4 @@ Relevant paths:
 
 ## Completion rule
 
-Keep checkboxes grounded in implementation and user-confirmed verification. Mark only completed work. Preserve unresolved decisions as open and stop for the user's direction after completing M5.
+Keep checkboxes grounded in implementation and user-confirmed verification. Mark only completed work. Preserve unresolved decisions as open and stop for the user's direction after completing M7.

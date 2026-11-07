@@ -101,10 +101,42 @@ export function BraintreePaymentForm({
     setSubmitting(true);
     setMessage("");
     try {
+      // Check field validity before attempting tokenization
+      const state = instance.getState();
+      const fieldLabels: Record<string, string> = {
+        number: "Card number",
+        expirationDate: "Expiry date",
+        cvv: "Security code",
+      };
+      const problems: string[] = [];
+      for (const [key, field] of Object.entries(state.fields)) {
+        if (!field.isValid) {
+          const label = fieldLabels[key] ?? key;
+          if (field.isEmpty) {
+            problems.push(`${label} is required`);
+          } else if (!field.isPotentiallyValid) {
+            problems.push(`${label} is invalid`);
+          } else {
+            problems.push(`${label} is incomplete`);
+          }
+        }
+      }
+      if (problems.length > 0) {
+        setMessage(problems.join(". ") + ".");
+        setSubmitting(false);
+        return;
+      }
+
       const { nonce } = await instance.tokenize();
       await onPaymentMethodRef.current(nonce);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Payment details could not be verified. Check the fields and try again.");
+      // Provide a friendlier message for the common tokenization error
+      const msg = error instanceof Error ? error.message : "";
+      if (msg.includes("Cannot tokenize") || msg.includes("invalid")) {
+        setMessage("Please fill in all card fields with valid test data. Try: 4111 1111 1111 1111, any future date, any 3-digit CVV.");
+      } else {
+        setMessage(msg || "Payment details could not be verified. Check the fields and try again.");
+      }
     } finally {
       setSubmitting(false);
     }
