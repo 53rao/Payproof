@@ -95,7 +95,7 @@ export async function GET(request: Request) {
     let rows = await db.paymentEvent.findMany({
       where,
       orderBy: afterTime ? [{ createdAt: "asc" }, { id: "asc" }] : [{ createdAt: "desc" }, { id: "desc" }],
-      take: 30,
+      take: afterTime ? 30 : 1,
       include: {
         order: {
           include: {
