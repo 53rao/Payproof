@@ -16,6 +16,7 @@ type Incident = {
   oldestCaseAgeHours?: number;
 };
 type NotificationDraft = { subject: string; body: string; recipientEmail?: string };
+type SentEmail = { to: string; emailId: string };
 type DeliveryChannel = "EMAIL" | "CHATBOX";
 const labels: Record<Incident["type"], string> = {
   FAILURE_SPIKE: "Failure spike",
@@ -33,6 +34,7 @@ export function Incidents() {
   const [expandedDrafts, setExpandedDrafts] = useState<Set<string>>(() => new Set());
   const [recipients, setRecipients] = useState<Record<string, string>>({});
   const [channels, setChannels] = useState<Record<string, DeliveryChannel>>({});
+  const [sentEmails, setSentEmails] = useState<Record<string, SentEmail>>({});
   const [loadingAction, setLoadingAction] = useState<Record<string, boolean>>({});
   const [copied, setCopied] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState("");
@@ -66,14 +68,25 @@ export function Incidents() {
 
   const visibleIncidents = useMemo(() => incidents.filter((incident) => !dismissed.has(incident.id)), [incidents, dismissed]);
 
-  const performAction = async (incident: Incident, action: "NOTIFY_MERCHANT" | "FLAG_FOR_MONITORING" | "DISMISS") => {
+  const performAction = async (incident: Incident, action: "NOTIFY_MERCHANT" | "SEND_EMAIL" | "FLAG_FOR_MONITORING" | "DISMISS") => {
     setLoadingAction((current) => ({ ...current, [incident.id]: true }));
     setError("");
     try {
       const response = await fetch("/api/admin/incidents", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ incidentId: incident.id, action, merchantId: incident.merchantId }),
+        body: JSON.stringify({
+          incidentId: incident.id,
+          action,
+          merchantId: incident.merchantId,
+          ...(action === "SEND_EMAIL" ? {
+            email: {
+              to: recipients[incident.id] ?? drafts[incident.id]?.recipientEmail ?? defaultIncidentRecipient(incident.merchantId),
+              subject: drafts[incident.id]?.subject,
+              text: drafts[incident.id]?.body,
+            },
+          } : {}),
+        }),
         cache: "no-store",
       });
       const body = await response.json();
@@ -84,6 +97,8 @@ export function Incidents() {
         if (draftData.recipientEmail) {
           setRecipients((current) => ({ ...current, [incident.id]: draftData.recipientEmail! }));
         }
+      } else if (action === "SEND_EMAIL") {
+        setSentEmails((current) => ({ ...current, [incident.id]: { to: recipients[incident.id] ?? drafts[incident.id]?.recipientEmail ?? defaultIncidentRecipient(incident.merchantId), emailId: body.emailId } }));
       } else if (action === "FLAG_FOR_MONITORING") {
         setFlagged((current) => new Set(current).add(incident.id));
       } else {
@@ -117,10 +132,12 @@ export function Incidents() {
     <div className="pp-incidents-list">{visibleIncidents.map((incident) => {
       const draft = drafts[incident.id];
       const busy = Boolean(loadingAction[incident.id]);
-      const defaultRecipient = incident.merchantId === "fieldform" ? "fieldform@payproof.demo" : "northstar@payproof.demo";
+      const defaultRecipient = defaultIncidentRecipient(incident.merchantId);
       const recipient = recipients[incident.id] ?? draft?.recipientEmail ?? defaultRecipient;
       const channel = channels[incident.id] ?? "EMAIL";
       const validRecipient = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.trim());
+      const recipientDomain = recipient.trim().split("@").pop()?.toLowerCase() ?? "";
+      const placeholderRecipient = recipientDomain === "example.com" || recipientDomain.endsWith(".example.com") || /\.(demo|example|test|invalid|localhost)$/.test(recipientDomain);
       const demoSubject = draft ? draft.subject : "";
       const demoBody = draft ? draft.body : "";
       const mailto = draft && validRecipient ? `mailto:${encodeURIComponent(recipient.trim())}?subject=${encodeURIComponent(demoSubject)}&body=${encodeURIComponent(demoBody)}` : undefined;
@@ -146,11 +163,18 @@ export function Incidents() {
           </div>
           <div className="pp-incident-draft-actions">
             {channel === "EMAIL" && (mailto ? <a href={mailto}>Open email draft</a> : <span className="pp-incident-invalid-email">Enter a valid email address to open the draft.</span>)}
+            {channel === "EMAIL" && <button type="button" className="pp-incident-send-email" onClick={() => void performAction(incident, "SEND_EMAIL")} disabled={busy || !validRecipient || placeholderRecipient}>{busy && loadingAction[incident.id] ? "Sending…" : "Send email"}</button>}
             <button type="button" onClick={() => void copyDraft(incident.id, demoSubject, demoBody)}>{copied.has(incident.id) ? "Copied" : channel === "EMAIL" ? "Copy email draft" : "Copy for chatbox"}</button>
           </div>
+          {channel === "EMAIL" && placeholderRecipient && <p className="pp-incident-invalid-email">Replace the demo email with a real recipient before sending.</p>}
+          {sentEmails[incident.id] && <p className="pp-incident-email-sent" role="status">Sent via Resend to {sentEmails[incident.id].to}.</p>}
           </>}
         </div>}
       </article>;
     })}</div>
   </section>;
+}
+
+function defaultIncidentRecipient(merchantId: string) {
+  return merchantId === "fieldform" ? "fieldform@payproof.demo" : "northstar@payproof.demo";
 }

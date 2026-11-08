@@ -777,6 +777,23 @@ html {
   font-size: 10px;
 }
 
+.pp-incident-draft-actions .pp-incident-send-email {
+  border-color: #17243b;
+  background: #17243b;
+  color: #fff;
+}
+
+.pp-incident-draft-actions button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pp-incident-email-sent {
+  margin: 10px 0 0;
+  color: #286443;
+  font-size: 11px;
+}
+
 /* ---------------------------------------------------- */
 /* Merchant Health Summary (Dark Panel)                 */
 /* ---------------------------------------------------- */
