@@ -222,7 +222,7 @@ async function readExistingOrder(db: NonNullable<ReturnType<typeof getDatabase>>
   return { id: order.id, amount: order.totalCents / 100, items: order.items.map((item) => ({ id: item.productId, quantity: item.quantity })), simulated: order.simulated, origin: order.checkoutOrigin, repeated: true };
 }
 
-export async function captureDatabaseOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string) {
+export async function captureDatabaseOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string, diagnosticScenario?: { type: string; label: string; expectedSignal: string }) {
   const db = getDatabase();
   if (!db) throw new Error("DATABASE_URL is not configured.");
   const orderContext = await db.order.findUnique({
@@ -248,7 +248,7 @@ export async function captureDatabaseOrder(orderId: string, outcome: "success" |
   try {
     await db.$transaction(async (tx) => {
       await tx.order.update({ where: { id: orderId }, data: { status: nextStatus } });
-      const eventFacts = { ...(payment.raw as Record<string, unknown>), ...(outcome !== "success" ? { customerReportedIssue: { type: issueType ?? "OTHER", originalText: issueDetails ?? "" } } : {}) };
+      const eventFacts = { ...(payment.raw as Record<string, unknown>), ...(diagnosticScenario ? { diagnosticScenario } : {}), ...(outcome !== "success" ? { customerReportedIssue: { type: issueType ?? "OTHER", originalText: issueDetails ?? "" } } : {}) };
       const simulated = orderId.startsWith("SIM-") || orderId.startsWith("DEMO-") || ("simulated" in payment.raw && payment.raw.simulated === true);
       await tx.paymentEvent.create({ data: { orderId, type: "CAPTURE_RESULT", paymentStatus: payment.status, issue: payment.issue, debugId: payment.debug_id, rawJson: eventFacts as Prisma.InputJsonValue, simulated } });
       if (payment.status === "COMPLETED") return;

@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const ftShort = { processor_decline: "PD", instrument_expired: "IE", duplicate_invoice: "DI", network_timeout: "NT" }[failureType as FailureType];
     const merchantShort = merchantId === "northstar" ? "NS" : "FF";
     const productId = merchantProduct[merchantId as MerchantId];
-    const transactions: Array<{ id: string; orderId: string; origin: "HUMAN" | "AGENT"; outcome: string; transactionId: string | null; caseId: string | null; caseCreated: boolean; createdAt: string; failureType: string; merchantId: string; simulationId: string }> = [];
+    const transactions: Array<{ id: string; orderId: string; origin: "HUMAN" | "AGENT"; outcome: string; transactionId: string | null; caseId: string | null; caseCreated: boolean; createdAt: string; failureType: string; merchantId: string; simulationId: string; expectedSignal: string; observedSignal: string | null; scenarioMatched: boolean }> = [];
     const transactionIds: string[] = [];
     const caseIds: string[] = [];
 
@@ -89,9 +89,15 @@ export async function POST(request: Request) {
         "fake-processor-declined-visa-nonce",
         ft.issue,
         note,
+        { type: failureType as FailureType, label: ft.label, expectedSignal: ft.issue },
       );
       const caseRecord = result.state.cases.find((item) => item.orderId === order.id);
       const txId = "transaction_id" in result.payment ? result.payment.transaction_id ?? null : null;
+      const raw = result.payment.raw as Record<string, unknown>;
+      const observedSignal = typeof raw.processorResponseCode === "string" ? raw.processorResponseCode : result.payment.issue ?? null;
+      const scenarioMatched = failureType === "processor_decline"
+        ? result.payment.status === "FAILED" && Boolean(observedSignal)
+        : Boolean(observedSignal && observedSignal.toLowerCase() === ft.issue.toLowerCase());
       if (txId) transactionIds.push(txId);
       if (caseRecord?.id) caseIds.push(caseRecord.id);
       transactions.push({
@@ -106,6 +112,9 @@ export async function POST(request: Request) {
         failureType: failureType as FailureType,
         merchantId: merchantId as MerchantId,
         simulationId,
+        expectedSignal: ft.issue,
+        observedSignal,
+        scenarioMatched,
       });
     }
 

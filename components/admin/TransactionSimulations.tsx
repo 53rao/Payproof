@@ -21,6 +21,9 @@ type SimulationRow = {
   caseId?: string | null;
   caseCreated: boolean;
   createdAt: string;
+  expectedSignal?: string;
+  observedSignal?: string | null;
+  scenarioMatched?: boolean;
 };
 
 type Diagnosis = {
@@ -408,8 +411,10 @@ export function TransactionSimulations() {
             <span>Latest transaction<strong className="pp-simulation-id">{latest.transactionId || "Unavailable"}</strong></span>
             <span>Latest origin<strong><i className={`pp-origin-badge ${String(latest.origin).toLowerCase()}`}>{latest.origin}</i></strong></span>
             <span>Latest outcome<strong>{latest.outcome}</strong></span>
+            <span>Latest processor signal<strong>{latest.observedSignal || "Not recorded"}</strong></span>
             <span>Cases created<strong>{result.transactions.filter((t) => t.caseCreated).length} / {result.transactions.length}</strong></span>
           </div>
+          {result.transactions.some((transaction) => transaction.scenarioMatched === false) && <p className="pp-simulation-scenario-warning" role="status">The Sandbox response did not match the requested scenario for {result.transactions.filter((transaction) => transaction.scenarioMatched === false).length} transaction(s). Diagnosis uses the observed processor response.</p>}
         </article>
       )}
 

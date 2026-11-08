@@ -33,6 +33,10 @@ export default function AdminNetworkPage() {
                   <h1 id="pp-network-page-title">Network Health</h1>
                 </div>
               </div>
+              <div className="pp-network-live-link-row">
+                <p>Inspect the latest payment as soon as its capture is recorded.</p>
+                <Link href="/admin/live-transaction" className="pp-network-live-link">Open Live Transaction <span aria-hidden="true">↗</span></Link>
+              </div>
               <Incidents />
               <LatestDiagnosis />
               <AgentActions variant="panel" />

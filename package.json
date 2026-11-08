@@ -29,7 +29,8 @@
     "gsap": "^3.13.0",
     "next": "^15.5.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "resend": "^6.37.0"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

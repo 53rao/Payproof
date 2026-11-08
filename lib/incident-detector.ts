@@ -12,6 +12,7 @@ type Incident = {
   detail: string;
   confidence: string;
   detectedAt: string;
+  flagged: boolean;
   actions: IncidentAction[];
   caseCount?: number;
   oldestCaseAgeHours?: number;
@@ -113,6 +114,7 @@ export async function detectIncidents(): Promise<Incident[]> {
         detail: `${failures.length} failed attempts · ${fifteenMinutesAgo.toISOString()} to ${detectedAt.toISOString()} · ${classification}`,
         confidence: classification,
         detectedAt: detectedAt.toISOString(),
+        flagged: false,
         actions,
       });
     }
@@ -129,6 +131,7 @@ export async function detectIncidents(): Promise<Incident[]> {
         detail: `Failed orders: ${failedOrderIds.length} · ${fiveMinutesAgo.toISOString()} to ${detectedAt.toISOString()}`,
         confidence: "Possible carding attack — elevated rapid failures detected",
         detectedAt: detectedAt.toISOString(),
+        flagged: false,
         actions,
       });
     }
@@ -155,6 +158,7 @@ export async function detectIncidents(): Promise<Incident[]> {
       detail: `Case IDs: ${caseIds.join(", ")}`,
       confidence: "Recorded case state requires human review",
       detectedAt: detectedAt.toISOString(),
+      flagged: false,
       actions,
     });
   }
@@ -183,11 +187,34 @@ export async function detectIncidents(): Promise<Incident[]> {
       detail: `Oldest unresolved case: ${oldestCaseAgeHours} hours old · ${new Date(oldestCreatedAt).toISOString()}`,
       confidence: "Open case count reached the support threshold",
       detectedAt: detectedAt.toISOString(),
+      flagged: false,
       actions: ["NOTIFY_MERCHANT", "DISMISS"],
       caseCount: cases.length,
       oldestCaseAgeHours,
     });
   }
 
-  return incidents;
+  const ids = incidents.map((incident) => incident.id);
+  if (ids.length) {
+    await db.incidentState.updateMany({ where: { active: true, id: { notIn: ids } }, data: { active: false } });
+  } else {
+    await db.incidentState.updateMany({ where: { active: true }, data: { active: false } });
+  }
+  const states = await Promise.all(incidents.map(async (incident) => {
+    const previous = await db.incidentState.findUnique({ where: { id: incident.id }, select: { active: true } });
+    const state = await db.incidentState.upsert({
+      where: { id: incident.id },
+      create: { id: incident.id, type: incident.type, merchantId: incident.merchantId, firstDetectedAt: detectedAt, lastSeenAt: detectedAt },
+      update: {
+        type: incident.type,
+        merchantId: incident.merchantId,
+        lastSeenAt: detectedAt,
+        ...(previous?.active ? {} : { firstDetectedAt: detectedAt, action: null, actedAt: null, actedBy: null }),
+      },
+    });
+    return { incident, state };
+  }));
+  return states
+    .filter(({ state }) => state.action !== "DISMISS")
+    .map(({ incident, state }) => ({ ...incident, detectedAt: state.firstDetectedAt.toISOString(), flagged: state.action === "FLAG_FOR_MONITORING" }));
 }
