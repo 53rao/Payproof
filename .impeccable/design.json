@@ -1,100 +1,138 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-07T00:00:00Z",
+  "generatedAt": "2026-11-08T09:07:22Z",
   "title": "Design System: PayProof Merchant Desk",
   "extensions": {
     "colorMeta": {
-      "ink": { "role": "neutral", "displayName": "Deep Merchant Navy" },
-      "canvas": { "role": "neutral", "displayName": "Warm Desk Canvas" },
-      "surface": { "role": "neutral", "displayName": "Ivory Paper" },
-      "line": { "role": "neutral", "displayName": "Warm Divider" },
-      "muted": { "role": "neutral", "displayName": "Slate Secondary Copy" },
-      "success": { "role": "success", "displayName": "Muted Ledger Green" },
-      "failure": { "role": "error", "displayName": "Brick Payment Red" },
-      "accent": { "role": "primary", "displayName": "Signal Orange" },
-      "highlight": { "role": "tertiary", "displayName": "Lime Highlight" }
+      "ink": {
+        "role": "neutral",
+        "displayName": "Near Black",
+        "canonical": "#111416",
+        "tonalRamp": ["oklch(15% 0.004 230)", "oklch(26% 0.005 230)", "oklch(38% 0.005 230)", "oklch(50% 0.004 230)", "oklch(62% 0.004 230)", "oklch(74% 0.003 230)", "oklch(86% 0.002 230)", "oklch(96% 0.001 230)"]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Cool Near White",
+        "canonical": "#f6f7f8",
+        "tonalRamp": ["oklch(15% 0.004 247)", "oklch(26% 0.006 247)", "oklch(38% 0.008 247)", "oklch(50% 0.009 247)", "oklch(62% 0.008 247)", "oklch(74% 0.007 247)", "oklch(86% 0.005 247)", "oklch(96% 0.003 247)"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "White Surface",
+        "canonical": "#ffffff",
+        "tonalRamp": ["oklch(15% 0 0)", "oklch(26% 0 0)", "oklch(38% 0 0)", "oklch(50% 0 0)", "oklch(62% 0 0)", "oklch(74% 0 0)", "oklch(86% 0 0)", "oklch(96% 0 0)"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Cool Gray Divider",
+        "canonical": "#e2e6e9",
+        "tonalRamp": ["oklch(15% 0.004 230)", "oklch(26% 0.006 230)", "oklch(38% 0.008 230)", "oklch(50% 0.01 230)", "oklch(62% 0.009 230)", "oklch(74% 0.007 230)", "oklch(86% 0.005 230)", "oklch(96% 0.003 230)"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Slate Secondary Copy",
+        "canonical": "#66717d",
+        "tonalRamp": ["oklch(15% 0.006 245)", "oklch(26% 0.012 245)", "oklch(38% 0.019 245)", "oklch(50% 0.026 245)", "oklch(62% 0.03 245)", "oklch(74% 0.024 245)", "oklch(86% 0.015 245)", "oklch(96% 0.006 245)"]
+      },
+      "success": {
+        "role": "success",
+        "displayName": "Ledger Green",
+        "canonical": "#13834e",
+        "tonalRamp": ["oklch(15% 0.025 151)", "oklch(26% 0.055 151)", "oklch(38% 0.1 151)", "oklch(50% 0.14 151)", "oklch(62% 0.16 151)", "oklch(74% 0.12 151)", "oklch(86% 0.07 151)", "oklch(96% 0.025 151)"]
+      },
+      "failure": {
+        "role": "error",
+        "displayName": "Payment Red",
+        "canonical": "#dc3938",
+        "tonalRamp": ["oklch(15% 0.03 28)", "oklch(26% 0.07 28)", "oklch(38% 0.13 28)", "oklch(50% 0.18 28)", "oklch(62% 0.2 28)", "oklch(74% 0.15 28)", "oklch(86% 0.08 28)", "oklch(96% 0.03 28)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "DM Sans Display", "purpose": "Page titles and primary dashboard headings." },
+      "body": { "displayName": "DM Sans", "purpose": "Interface copy and explanatory text." },
+      "label": { "displayName": "DM Sans Label", "purpose": "Compact controls and operational metadata." }
     },
     "shadows": [
-      { "name": "case-review-dialog", "value": "0 18px 55px rgba(23,36,59,.22)", "purpose": "Separate the focused case review modal from the dimmed board." }
+      { "name": "search-results", "value": "0 10px 25px rgba(23, 36, 59, 0.08)", "purpose": "Separate the search suggestions from the admin workspace." },
+      { "name": "case-review-dialog", "value": "0 18px 55px rgba(23, 36, 59, 0.22)", "purpose": "Separate the focused case review modal from the dimmed board." }
     ],
     "motion": [
-      { "name": "entrance", "value": "GSAP power2.out, 0.42s", "purpose": "One restrained first-view entrance; content is visible by default and reduced-motion preferences disable it." },
-      { "name": "control", "value": "GSAP power1.out, 0.25s", "purpose": "Communicate the stock-protection toggle state." },
-      { "name": "section-snap", "value": "y mandatory; snap-stop always", "purpose": "Keep each scroll view aligned to one section; navigation highlights the section currently in view." }
+      { "name": "control-hover", "value": "150–180ms ease", "purpose": "Give navigation and controls a quick state response." },
+      { "name": "section-scroll", "value": "smooth scroll; disabled for reduced motion", "purpose": "Move between anchored dashboard sections while preserving the reduced-motion preference." },
+      { "name": "live-scan", "value": "420ms per revealed record step; reduced motion removes CSS pulses", "purpose": "Show the order in which recorded transaction evidence is reviewed." }
     ],
     "breakpoints": [
-      { "name": "wide", "value": "1360px" },
-      { "name": "tablet", "value": "1120px" },
-      { "name": "compact", "value": "760px" },
-      { "name": "small", "value": "420px" }
+      { "name": "wide", "value": "1240px" },
+      { "name": "desktop", "value": "1060px" },
+      { "name": "tablet", "value": "860px" },
+      { "name": "compact", "value": "768px" },
+      { "name": "small", "value": "560px" }
     ]
   },
   "components": [
     {
-      "name": "Warm information panel",
+      "name": "Information Panel",
       "kind": "card",
       "refersTo": "panel",
-      "description": "Primary container for merchant metrics, activity, and records.",
-      "html": "<article class=\"ds-panel\"><h2>Payment events</h2><p>Recent outcomes from the simulated checkout.</p></article>",
-      "css": ".ds-panel { background: #fffefa; color: #17243b; border: 1px solid #ded9cf; border-radius: 12px; padding: 20px; } .ds-panel h2 { margin: 0; font: 650 17px/1.35 'DM Sans', sans-serif; letter-spacing: -0.025em; } .ds-panel p { margin: 5px 0 0; color: #5e6877; font: 400 12px/1.5 'DM Sans', sans-serif; } .ds-panel:focus-visible { outline: 3px solid #ef4d1a; outline-offset: 3px; }"
+      "description": "White bordered container for payment events, metrics, and ledger records.",
+      "html": "<article class=\"ds-panel\"><h2>Payment events</h2><p>Recent checkout outcomes across connected merchants.</p></article>",
+      "css": ".ds-panel { background: #ffffff; color: #111416; border: 1px solid #e2e6e9; border-radius: 13px; padding: 20px; font: 400 14px/1.45 'DM Sans', sans-serif; } .ds-panel h2 { margin: 0; color: #111416; font-size: 17px; font-weight: 650; letter-spacing: -0.02em; } .ds-panel p { margin: 5px 0 0; color: #66717d; font-size: 12px; } .ds-panel:focus-visible { outline: 2px solid #111416; outline-offset: 3px; }"
     },
     {
-      "name": "Navy feature panel",
+      "name": "Feature Panel",
       "kind": "card",
       "refersTo": "feature-panel",
-      "description": "High-contrast surface for stock safety and focused merchant actions.",
-      "html": "<article class=\"ds-feature\"><h2>Order safety</h2><p>Release reserved inventory after a simulated payment failure.</p></article>",
-      "css": ".ds-feature { background: #17243b; color: #fff; border-radius: 12px; padding: 20px; } .ds-feature h2 { margin: 0; font: 650 17px/1.35 'DM Sans', sans-serif; letter-spacing: -0.025em; } .ds-feature p { max-width: 30ch; margin: 8px 0 0; color: #d2d7df; font: 400 11px/1.55 'DM Sans', sans-serif; }"
+      "description": "Near-black surface for a focused payment pattern or operational summary.",
+      "html": "<article class=\"ds-feature\"><h2>Transaction pattern</h2><p>Three recorded failures share a processor response code.</p></article>",
+      "css": ".ds-feature { background: #111416; color: #ffffff; border-radius: 13px; padding: 20px; font-family: 'DM Sans', sans-serif; } .ds-feature h2 { margin: 0; font-size: 17px; font-weight: 650; } .ds-feature p { max-width: 34ch; margin: 8px 0 0; color: #e2e6e9; font-size: 12px; line-height: 1.5; }"
     },
     {
-      "name": "Section rail item",
+      "name": "Primary Action Button",
+      "kind": "button",
+      "description": "Compact dark action used for the main task in a panel.",
+      "html": "<button class=\"ds-button\" type=\"button\">Open transaction</button>",
+      "css": ".ds-button { min-height: 36px; border: 1px solid #111416; border-radius: 8px; background: #111416; color: #ffffff; padding: 0 14px; font: 600 11px 'DM Sans', sans-serif; cursor: pointer; transition: background 150ms ease, border-color 150ms ease; } .ds-button:hover:not(:disabled) { border-color: #30383d; background: #30383d; } .ds-button:active:not(:disabled) { transform: translateY(1px); } .ds-button:focus-visible { outline: 2px solid #111416; outline-offset: 3px; } .ds-button:disabled { opacity: .5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Search Field",
+      "kind": "input",
+      "description": "Pill-shaped search input in the admin top bar.",
+      "html": "<label class=\"ds-search\"><span aria-hidden=\"true\">⌕</span><input type=\"search\" placeholder=\"Search orders or cases…\" aria-label=\"Search orders and cases\"></label>",
+      "css": ".ds-search { display: flex; height: 36px; align-items: center; gap: 10px; border: 1px solid #e2e6e9; border-radius: 999px; background: #ffffff; padding: 0 12px; color: #66717d; } .ds-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #111416; font: 400 12px 'DM Sans', sans-serif; } .ds-search input::placeholder { color: #66717d; opacity: 1; } .ds-search:focus-within { outline: 2px solid #111416; outline-offset: 2px; }"
+    },
+    {
+      "name": "Section Rail Item",
       "kind": "nav",
-      "description": "Icon-only anchor to an in-page dashboard section, with an accessible label.",
+      "description": "Icon-led anchor in the narrow dashboard rail with an accessible name.",
       "html": "<a class=\"ds-rail-item\" href=\"#events\" aria-label=\"Payment events\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 19.5h16M6 16v-5m4 5V5m4 11v-7m4 7V8\"/></svg></a>",
-      "css": ".ds-rail-item { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 10px; color: #667080; transition: background .18s, color .18s, transform .18s; } .ds-rail-item svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-rail-item:hover { background: #ebe7dc; color: #17243b; transform: translateY(-1px); } .ds-rail-item:focus-visible { outline: 3px solid #ef4d1a; outline-offset: 3px; }"
+      "css": ".ds-rail-item { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 12px; color: #66717d; transition: background 160ms ease, color 160ms ease, transform 160ms ease; } .ds-rail-item svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; } .ds-rail-item:hover { background: #f6f7f8; color: #111416; transform: translateY(-1px); } .ds-rail-item[aria-current='location'] { background: #111416; color: #ffffff; } .ds-rail-item:focus-visible { outline: 2px solid #111416; outline-offset: 3px; }"
     },
     {
-      "name": "Semantic status chip",
+      "name": "Semantic Status Chip",
       "kind": "chip",
       "refersTo": "status-chip",
-      "description": "Compact status treatment; success and failure colors communicate recorded payment outcomes.",
-      "html": "<span class=\"ds-status\">Paid</span>",
-      "css": ".ds-status { display: inline-flex; align-items: center; border-radius: 8px; background: #edf3e9; padding: 5px 8px; color: #345d3c; font: 600 9px/1.3 'DM Sans', sans-serif; } .ds-status:hover { background: #e0eadb; } .ds-status:focus-visible { outline: 3px solid #ef4d1a; outline-offset: 3px; }"
+      "description": "Compact success or failure label for a recorded payment outcome.",
+      "html": "<span class=\"ds-status\">Completed</span>",
+      "css": ".ds-status { display: inline-flex; min-height: 24px; align-items: center; border-radius: 8px; background: #e9f7ef; padding: 0 8px; color: #13834e; font: 600 9px/1.3 'DM Sans', sans-serif; } .ds-status.failed { background: #fff0ee; color: #dc3938; } .ds-status:focus-visible { outline: 2px solid #111416; outline-offset: 2px; }"
     },
     {
-      "name": "Case board card",
-      "kind": "card",
-      "description": "Draggable case summary with merchant, issue, order, amount, and review action.",
-      "html": "<article class=\"ds-case\"><small>Northstar Goods</small><h3>Payment issue</h3><p>CASE-DEMO-001 · DEMO-ORDER-001</p><button>Review</button></article>",
-      "css": ".ds-case { background: #fffefa; color: #17243b; border: 1px solid #ded9cf; border-radius: 10px; padding: 12px; cursor: grab; } .ds-case small, .ds-case p { color: #5e6877; font: 400 10px/1.5 'DM Sans', sans-serif; } .ds-case h3 { margin: 8px 0 4px; font: 650 13px/1.4 'DM Sans', sans-serif; } .ds-case button { color: #17243b; font: 650 11px 'DM Sans', sans-serif; text-decoration: underline; text-underline-offset: 3px; } .ds-case:focus-within { outline: 3px solid #ef4d1a; outline-offset: 2px; }"
+      "name": "Live Scan Stream",
+      "kind": "custom",
+      "description": "Dark event surface that lists transaction checks with levels and references.",
+      "html": "<section class=\"ds-stream\" aria-label=\"Live scan stream\"><p><b>[INFO]</b> Order context matched · origin human.</p><p class=\"warn\"><b>[WARN]</b> AVS response was not recorded.</p></section>",
+      "css": ".ds-stream { display: grid; gap: 9px; border: 1px solid #252629; border-radius: 13px; background: #111214; padding: 17px; color: #d4d9dc; font: 400 10px/1.55 'Cascadia Code', Consolas, monospace; } .ds-stream p { margin: 0; } .ds-stream b { color: #88b7ef; font-weight: 700; } .ds-stream .warn b { color: #f0ac67; } .ds-stream:focus-within { outline: 2px solid #111416; outline-offset: 3px; }"
     }
   ],
   "narrative": {
-    "northStar": "A warm, calm merchant desk that makes operational evidence easy to scan.",
-    "overview": "The merchant console pairs a warm off-white canvas with ivory panels, deep navy text and feature surfaces, and restrained orange and lime accents. It makes payment state and inventory consequences visible together while keeping simulated data and evidence limits explicit. The case workspace uses a compact Kanban board and focused review modal; dashboard metrics remain tied to persisted merchant-scoped records.",
-    "keyCharacteristics": [
-      "A 72px icon rail preserves section-based navigation.",
-      "The activity stream is sourced from persisted orders and cases.",
-      "Deep navy panels provide contrast inside a warm light workspace.",
-      "Inventory events are never invented when the ledger does not record them.",
-      "Case cards can move between review states and retain full evidence review access."
-    ],
-    "rules": [
-      { "name": "Evidence first", "body": "Show what records establish and what remains unknown.", "section": "components" },
-      { "name": "Quiet surfaces", "body": "Use warm borders and spacing for hierarchy; reserve navy for feature panels.", "section": "elevation" },
-      { "name": "Semantic status", "body": "Green and red communicate recorded payment or protection state, not decoration.", "section": "colors" },
-      { "name": "Merchant scope", "body": "Keep merchant attribution attached to catalog products and their orders and cases.", "section": "components" }
-    ],
+    "overview": "The merchant console is an operations surface for reviewing checkout outcomes, payment incidents, and case evidence. It keeps PayProof's Sandbox and demo constraints visible. Payment records help operators investigate an incident; they do not establish customer intent.\n\nThe main workspace pairs a quiet white canvas with crisp black feature panels. A narrow icon rail preserves section-based navigation, while a separate activity stream keeps recent payment and case events in view on wide screens. Secondary records sit lower on the page so the opening view remains focused.\n\nThese rules describe `/admin`. The storefront at `/` retains its existing visual treatment until it is redesigned separately.",
     "dos": [
-      "Do label all customer, payment, and inventory values as simulated.",
-      "Do keep section anchors, visible focus states, and reduced-motion behavior.",
-      "Do show a clear empty state when the backing ledger has no event type.",
-      "Do keep the remembered merchant selection scoped to the case board."
+      "Do label all demo data as simulated.",
+      "Do keep failures, pending states, and successful outcomes visually distinct.",
+      "Do retain functional section anchors and keyboard focus states."
     ],
     "donts": [
-      "Don't infer fulfillment or customer intent from a payment outcome.",
-      "Don't fabricate inventory event history.",
-      "Don't crowd every operational record into the opening viewport."
+      "Don't infer customer intent from payment state.",
+      "Don't fill the first viewport with every available record."
     ]
   }
 }

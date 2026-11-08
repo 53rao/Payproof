@@ -23,6 +23,12 @@
         ],
         "createdAt": "2026-11-07T07:53:57.129Z",
         "reason": "Agent: user explicitly specified colored incident-type left borders (red carding, amber failure spike, blue agent review)."
+      },
+      {
+        "rule": "design-system-font",
+        "value": "cascadia code",
+        "createdAt": "2026-11-08T08:53:39.238Z",
+        "reason": "The user requested a live transaction console based on the attached terminal-style reference; monospace is limited to event log output."
       }
     ]
   }
