@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
+import { getOwnerSession, hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
 import { detectIncidents } from "@/lib/incident-detector";
 import { draftMerchantNotification } from "@/lib/incident-notifications";
+import { getDatabase } from "@/db/client";
 
 const allowedActions = ["NOTIFY_MERCHANT", "FLAG_FOR_MONITORING", "DISMISS"] as const;
 type IncidentAction = typeof allowedActions[number];
@@ -31,9 +32,18 @@ export async function POST(request: Request) {
 
     if (input.action === "NOTIFY_MERCHANT") return NextResponse.json(await draftMerchantNotification(incident), { headers: { "Cache-Control": "no-store" } });
     if (input.action === "FLAG_FOR_MONITORING") {
-      console.info("Incident flagged for monitoring", { incidentId: incident.id, merchantId: incident.merchantId });
+      const db = getDatabase();
+      if (!db) return NextResponse.json({ error: "Incident actions require the database." }, { status: 503 });
+      const session = await getOwnerSession();
+      const actedAt = new Date();
+      await db.incidentState.update({ where: { id: incident.id }, data: { action: "FLAG_FOR_MONITORING", actedAt, actedBy: session?.email ?? null } });
       return NextResponse.json({ status: "flagged" });
     }
+    const db = getDatabase();
+    if (!db) return NextResponse.json({ error: "Incident actions require the database." }, { status: 503 });
+    const session = await getOwnerSession();
+    const actedAt = new Date();
+    await db.incidentState.update({ where: { id: incident.id }, data: { action: "DISMISS", actedAt, actedBy: session?.email ?? null } });
     return NextResponse.json({ status: "dismissed" });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "The incident action could not be completed." }, { status: 502 });

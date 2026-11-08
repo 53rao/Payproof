@@ -54,8 +54,8 @@ export async function createDemoOrder(items: { id: string; quantity: number }[],
   locks.set(idempotencyKey, { cart, promise });
   try { return await promise; } finally { locks.delete(idempotencyKey); }
 }
-export async function captureDemoOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string) {
-  if (getDatabase()) return captureDatabaseOrder(orderId, outcome, paymentMethodNonce, issueType, issueDetails);
+export async function captureDemoOrder(orderId: string, outcome: "success" | "decline" | "duplicate", paymentMethodNonce?: string, issueType?: string, issueDetails?: string, diagnosticScenario?: { type: string; label: string; expectedSignal: string }) {
+  if (getDatabase()) return captureDatabaseOrder(orderId, outcome, paymentMethodNonce, issueType, issueDetails, diagnosticScenario);
   const state = ledger(); const order = state.orders.find((candidate) => candidate.id === orderId);
   if (!order) throw new Error("Order not found in the simulated ledger.");
   if (order.payment) return { payment: order.payment, state: await getDemoState() };
@@ -65,6 +65,7 @@ export async function captureDemoOrder(orderId: string, outcome: "success" | "de
   try { payment = await paymentProvider.captureOrder(orderId, outcome, paymentMethodNonce); }
   catch (error) { order.status = "PENDING"; throw error; }
   order.payment = payment;
+  if (diagnosticScenario) payment.raw = { ...payment.raw, diagnosticScenario };
   if (payment.status === "FAILED") { order.checkoutIssueType = issueType; order.checkoutIssueDetails = issueDetails; }
   if (payment.status === "COMPLETED") order.status = "PAID";
   else {

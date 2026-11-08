@@ -1708,6 +1708,15 @@ html {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.pp-simulation-scenario-warning {
+  margin: 14px 0 0;
+  border-left: 3px solid #e18e21;
+  background: rgba(225, 142, 33, .1);
+  padding: 10px 12px;
+  color: var(--pp-ink, #17243b);
+  font-size: 12px;
+  line-height: 1.5;
+}
 
 .pp-simulation-id {
   font-family: var(--mono);

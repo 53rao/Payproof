@@ -113,8 +113,33 @@ model PaymentEvent {
   simulated     Boolean  @default(true)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payment_events_order_id_orders_id_fk")
+  liveScan      LiveTransactionScan?
 
   @@map("payment_events")
+}
+
+model LiveTransactionScan {
+  eventId  String       @id @map("event_id") @db.Uuid
+  scanJson Json         @map("scan_json")
+  scannedAt DateTime    @default(now()) @map("scanned_at") @db.Timestamptz(6)
+  event    PaymentEvent @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("live_transaction_scans")
+}
+
+model IncidentState {
+  id              String    @id
+  type            String
+  merchantId      String    @map("merchant_id")
+  firstDetectedAt DateTime  @map("first_detected_at") @db.Timestamptz(6)
+  lastSeenAt      DateTime  @map("last_seen_at") @db.Timestamptz(6)
+  active          Boolean   @default(true)
+  action          String?
+  actedAt         DateTime? @map("acted_at") @db.Timestamptz(6)
+  actedBy         String?   @map("acted_by")
+
+  @@index([active, lastSeenAt])
+  @@map("incident_states")
 }
 
 model Case {

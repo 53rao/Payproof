@@ -3,6 +3,7 @@ import { getDatabase } from "@/db/client";
 import { getDemoState, getOrderActivityList } from "@/lib/demo-store";
 import { hasOwnerSession } from "@/lib/auth";
 import { getMerchantForProduct } from "@/lib/merchants";
+import { Prisma } from "@prisma/client";
 
 type RawFacts = Record<string, unknown>;
 
@@ -91,10 +92,10 @@ export async function GET(request: Request) {
     const where = afterTime && cursorTime && afterId
       ? { type: "CAPTURE_RESULT", OR: [{ createdAt: { gt: cursorTime } }, { createdAt: cursorTime, id: { gt: afterId } }] }
       : { type: "CAPTURE_RESULT" };
-    const rows = await db.paymentEvent.findMany({
+    let rows = await db.paymentEvent.findMany({
       where,
       orderBy: afterTime ? [{ createdAt: "asc" }, { id: "asc" }] : [{ createdAt: "desc" }, { id: "desc" }],
-      take: afterTime ? 30 : 1,
+      take: 30,
       include: {
         order: {
           include: {
@@ -104,14 +105,15 @@ export async function GET(request: Request) {
         },
       },
     });
-    const chronologicalRows = afterTime ? rows : [...rows].reverse();
+    if (!afterTime) rows = [...rows].reverse();
+    const chronologicalRows = rows;
     const windowStart = new Date(Date.now() - 15 * 60_000);
     const recentRows = await db.paymentEvent.findMany({
       where: { type: "CAPTURE_RESULT", createdAt: { gte: windowStart } },
       select: { paymentStatus: true, order: { select: { items: { select: { product: { select: { merchantId: true } } } } } } },
       take: 500,
     });
-    const events = chronologicalRows.map((event) => {
+    const events = await Promise.all(chronologicalRows.map(async (event) => {
       const order = event.order;
       const merchants = [...new Map(order.items.map((item) => [item.product.merchant.id, item.product.merchant.name])).entries()].map(([id, name]) => ({ id, name }));
       const raw = mapRaw(event.rawJson);
@@ -130,6 +132,12 @@ export async function GET(request: Request) {
         avs: readString(raw.avsPostalCodeResponseCode) ?? readString(raw.avsStreetAddressResponseCode),
         cvv: readString(raw.cvvResponseCode),
       });
+      const scan = await db.liveTransactionScan.upsert({
+        where: { eventId: event.id },
+        create: { eventId: event.id, scanJson: summary as unknown as Prisma.InputJsonValue },
+        update: {},
+      });
+      const storedSummary = mapRaw(scan.scanJson);
       return {
         eventId: event.id,
         createdAt: event.createdAt.toISOString(),
@@ -144,9 +152,9 @@ export async function GET(request: Request) {
         merchants,
         items: order.items.map((item) => ({ id: item.productId, name: item.product.name, quantity: item.quantity })),
         caseId: order.cases[0]?.id ?? null,
-        ...summary,
+        ...storedSummary,
       };
-    });
+    }));
     return NextResponse.json({ events, storage: "neon-postgres" }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "Live transaction records could not be loaded." }, { status: 503, headers: { "Cache-Control": "no-store" } });

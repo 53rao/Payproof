@@ -18,6 +18,7 @@ const SYSTEM_PROMPT = `You are PayProof's diagnostic engine. You have received r
 
 Rules:
 - Base every claim on the actual records provided — do not generalize
+- The requested scenario is only a test intention. Processor response fields and payment status are the observed facts; never describe the requested scenario as having occurred when those facts do not support it.
 - Identify the specific signal combination that characterizes this pattern
 - Produce a testable hypothesis the merchant can act on
 - Never say "it appears" or "it seems" — be direct
@@ -223,6 +224,9 @@ export async function POST(request: Request) {
       agentActionsTaken: [...new Set(agentActions.map((a) => `${a.type}: ${a.detail}`))].slice(0, 20),
       paymentEventRecords: paymentEvents.map((e) => {
         const raw = e.rawJson as Record<string, unknown> | null;
+        const scenario = raw?.diagnosticScenario && typeof raw.diagnosticScenario === "object" ? raw.diagnosticScenario as Record<string, unknown> : null;
+        const observedSignal = raw && typeof raw.processorResponseCode === "string" ? raw.processorResponseCode : e.issue;
+        const scenarioType = typeof scenario?.type === "string" ? scenario.type : null;
         return {
           orderId: e.orderId,
           type: e.type,
@@ -233,6 +237,12 @@ export async function POST(request: Request) {
           checkoutOrigin: e.order.checkoutOrigin,
           transactionId: raw && typeof raw.transactionId === "string" ? raw.transactionId : null,
           processor: raw && typeof raw.processorResponseCode === "string" ? raw.processorResponseCode : null,
+          requestedScenario: scenarioType,
+          expectedSignal: typeof scenario?.expectedSignal === "string" ? scenario.expectedSignal : null,
+          observedSignal,
+          scenarioMatched: scenarioType === "processor_decline"
+            ? e.paymentStatus === "FAILED" && Boolean(observedSignal)
+            : scenarioType ? Boolean(observedSignal && observedSignal === scenario?.expectedSignal) : null,
           rawKeys: raw ? Object.keys(raw).slice(0, 12) : [],
         };
       }),
@@ -240,7 +250,20 @@ export async function POST(request: Request) {
       sourceNote: "Records above were read from the database for the provided simulation identifiers.",
     };
 
-    const diagnosis = await callGroq(context);
+    let diagnosis = await callGroq(context);
+    const records = context.paymentEventRecords;
+    const mismatches = records.filter((record) => record.scenarioMatched === false);
+    if (mismatches.length) {
+      const observed = [...new Set(mismatches.map((record) => record.observedSignal).filter(Boolean))].join(", ") || "no processor signal";
+      diagnosis = {
+        ...diagnosis,
+        pattern_detected: `The requested scenario did not match the recorded processor response in ${mismatches.length} of ${mismatches.length + records.filter((record) => record.scenarioMatched === true).length} captured transaction(s).`,
+        likely_cause: `The Sandbox recorded ${observed}. Use this processor result for diagnosis; the requested scenario label is not evidence that another failure mode occurred.`,
+        evidence: [...diagnosis.evidence, ...mismatches.slice(0, 5).map((record) => `Requested ${record.requestedScenario}; observed ${record.observedSignal ?? "no processor signal"} for order ${record.orderId}.`)],
+        confidence: "low",
+        confidence_reason: "At least one requested failure scenario disagrees with the stored processor response.",
+      };
+    }
     const analyzedAt = new Date().toISOString();
     // M12: persist every diagnosis automatically (upsert by simulationId).
     try {

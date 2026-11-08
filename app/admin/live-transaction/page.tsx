@@ -137,7 +137,7 @@ export default function LiveTransactionPage() {
   useEffect(() => {
     if (scanningRef.current || !queueRef.current.length) return;
     void scanTransaction(queueRef.current.shift()!);
-  }, [completedSteps, scanTransaction]);
+  }, [activeStep, completedSteps, scanTransaction]);
 
   const signOut = useCallback(async () => {
     const response = await fetch("/api/auth/logout", { method: "POST" });
