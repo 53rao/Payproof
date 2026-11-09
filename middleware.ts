@@ -25,9 +25,17 @@ export function middleware(request: NextRequest) {
 
   // Owner protection
   const isOwnerPage = pathname === "/admin" || pathname.startsWith("/admin/") || pathname === "/owner" || pathname.startsWith("/owner/");
-  const isOwnerApi = pathname.startsWith("/api/demo/") || pathname.startsWith("/api/owner/");
+  const isAdminApi = pathname.startsWith("/api/admin/");
+  const isOwnerApi = pathname.startsWith("/api/demo/") || pathname.startsWith("/api/owner/") || isAdminApi;
+
   if (!isOwnerPage && !isOwnerApi) return NextResponse.next();
   if (request.cookies.has(OWNER_SESSION_COOKIE)) return NextResponse.next();
+
+  // Return 403 for merchant sessions hitting any /api/admin/** route
+  if (isAdminApi && request.cookies.has(MERCHANT_SESSION_COOKIE)) {
+    return NextResponse.json({ error: "Owner sign-in is required." }, { status: 403, headers: { "Cache-Control": "no-store" } });
+  }
+
   if (isOwnerApi) return NextResponse.json({ error: "Owner sign-in is required." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   const login = new URL("/login", request.url);
   login.searchParams.set("next", `${pathname}${request.nextUrl.search}`);
@@ -38,6 +46,7 @@ export const config = {
   matcher: [
     "/admin/:path*",
     "/owner/:path*",
+    "/api/admin/:path*",
     "/api/demo/:path*",
     "/api/owner/:path*",
     "/merchant/:path*",

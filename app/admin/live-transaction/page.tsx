@@ -73,6 +73,13 @@ export default function LiveTransactionPage() {
   const seenRef = useRef(new Set<string>());
   const queueRef = useRef<LiveTransaction[]>([]);
   const scanningRef = useRef(false);
+  const streamBodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (streamBodyRef.current) {
+      streamBodyRef.current.scrollTop = streamBodyRef.current.scrollHeight;
+    }
+  }, [trace]);
 
   const scanTransaction = useCallback(async (next: LiveTransaction) => {
     scanningRef.current = true;
@@ -80,11 +87,10 @@ export default function LiveTransactionPage() {
     setCompletedSteps(0);
     setActiveStep(0);
     const currentTrace = next.trace.map((line) => ({ ...line, time: next.createdAt }));
-    setTrace([]);
     for (let index = 0; index < currentTrace.length; index++) {
       setActiveStep(Math.min(index, 5));
       await new Promise((resolve) => window.setTimeout(resolve, 420));
-      setTrace((lines) => [...lines.slice(-35), currentTrace[index]]);
+      setTrace((lines) => [...lines.slice(-200), currentTrace[index]]);
       setCompletedSteps(index + 1);
     }
     setActiveStep(-1);
@@ -180,8 +186,8 @@ export default function LiveTransactionPage() {
               <div className="pp-live-right-column">
                 <section className="pp-live-stream" aria-labelledby="pp-live-stream-title" aria-live="polite">
                   <header><div><TerminalIcon/><h2 id="pp-live-stream-title">Live scan stream</h2></div><span className={connection}><i/>{connection === "watching" ? "Watching" : connection === "error" ? "Reconnecting" : "Connecting"}</span></header>
-                  <div className="pp-live-stream-body">
-                    {trace.length ? trace.map((line, index) => <p className={`pp-live-log ${line.level.toLowerCase()}`} key={`${line.reference}-${index}`}><time>{clockTime(line.time)}</time><b>[{line.level}]</b><span>{line.message}</span><small>{line.reference}</small></p>) : <div className="pp-live-stream-empty"><span>Listening for a new CAPTURE_RESULT event…</span><i/></div>}
+                  <div className="pp-live-stream-body" ref={streamBodyRef}>
+                    {trace.length ? trace.map((line, index) => <p className={`pp-live-log ${line.level.toLowerCase()}`} key={`${line.time}-${line.reference}-${index}`}><time>{clockTime(line.time)}</time><b>[{line.level}]</b><span>{line.message}</span><small>{line.reference}</small></p>) : <div className="pp-live-stream-empty"><span>Listening for a new CAPTURE_RESULT event…</span><i/></div>}
                   </div>
                 </section>
 

@@ -267,6 +267,18 @@ export async function POST(request: Request) {
     const analyzedAt = new Date().toISOString();
     // M12: persist every diagnosis automatically (upsert by simulationId).
     try {
+      const existing = await db.simulationDiagnosis.findUnique({
+        where: { simulationId },
+        select: { evidence: true },
+      }).catch(() => null);
+      const existingEv = existing?.evidence && typeof existing.evidence === "object" && !Array.isArray(existing.evidence)
+        ? (existing.evidence as Record<string, unknown>)
+        : {};
+      const mergedEvidence = {
+        ...existingEv,
+        items: diagnosis.evidence,
+      };
+
       await db.simulationDiagnosis.upsert({
         where: { simulationId },
         create: {
@@ -274,7 +286,7 @@ export async function POST(request: Request) {
           merchantId: merchantId || "unknown",
           patternDetected: diagnosis.pattern_detected,
           likelyCause: diagnosis.likely_cause,
-          evidence: diagnosis.evidence as unknown as object,
+          evidence: mergedEvidence,
           hypothesis: diagnosis.hypothesis,
           recommendedAction: diagnosis.recommended_action,
           confidence: diagnosis.confidence,
@@ -284,7 +296,7 @@ export async function POST(request: Request) {
           merchantId: merchantId || "unknown",
           patternDetected: diagnosis.pattern_detected,
           likelyCause: diagnosis.likely_cause,
-          evidence: diagnosis.evidence as unknown as object,
+          evidence: mergedEvidence,
           hypothesis: diagnosis.hypothesis,
           recommendedAction: diagnosis.recommended_action,
           confidence: diagnosis.confidence,

@@ -4,9 +4,10 @@ Replace everything from `## M10` to the end of the original file with this conte
  
 ## Handoff block (replace the existing one)
  
-> **LAST ACHIEVED MILESTONE: M9 (implemented locally). Resume at M10.**
-> M10-M13 code compiles (`npm run build` passes) but is unverified. M10's failure types currently all send `fake-processor-declined-visa-nonce`, so they are labels, not distinct Sandbox outcomes. M11 diagnosis therefore cannot be trusted yet.
-> Order of work: M10 -> M11 -> M12 -> M13 -> M13A -> M14 -> M15A -> M15B -> M16 -> M17.
+> LAST ACHIEVED MILESTONE: M9 (implemented locally).
+> M10–M13 compile but are unverified against Braintree Sandbox + Neon. M13A, M15A, M15B, M16 not started. M14 exists but wrong architecture (synchronous, no Groq, not surfaced on cases or merchant portal).
+> New milestones added: M13-N (auto notifications) and M13-O (agent actions in live feed).
+> Order of work: M10 → M11 → M12 → M13 → M13-N → M13-O → M13A → M14 → M15A → M15B → M16 → M17.
  
 Verification standard for every milestone below: "done" means (a) code merged, (b) run against configured Sandbox + Neon with owner auth, (c) the specific rows/records listed in its acceptance checks were inspected, (d) the result is written under the milestone as a dated note. M5-M9 are "implemented locally" and get a light re-check at the end of M13.
 
@@ -90,6 +91,11 @@ Relevant paths:
 - [x] Validate server-side failure count, selected failure label, merchant, origin mode, and time compression.
 - [x] Create a fresh idempotency key for each diagnostic transaction and return transaction/order/case identifiers.
 - [x] Keep all diagnostic transactions on Braintree Sandbox and require the configured database for this diagnostics endpoint.
+- [x] Fixed merchant dropdown in `TransactionSimulations.tsx` to always show all 5 `DEMO_MERCHANTS` (Apex Outpost, Beacon Supply, Field & Form, Northstar Goods, Solis Studio) without being overwritten by analytics data.
+- [x] Joined `simulation_diagnoses` in `listDatabaseDashboardSimulations()` (`lib/database-demo-store.ts`) on `simulationId` / `simToken` extracted from `SIMDASH-V2F-` idempotency keys, returning `patternDetected` and `confidence` on order rows.
+- [x] Replaced client-side React `useState` diagnosis map in `TransactionSimulations.tsx` with DB-backed `patternDetected` (displaying "Pending" when null, and "Analyzing…" for the actively analyzing simulation run).
+- [x] Redesigned `TransactionSimulations.tsx` with a two-column layout (≥1200px): left column configurator with 11px uppercase tracking-widest muted labels, subtle orange left-accent focus border, and full-width pulsing run button; right column 'Last Diagnosis' card fetching from `GET /api/admin/simulate/latest-diagnosis` with confidence pill, recommended action block, collapsible hypothesis, relative timestamps, and shimmering skeleton loader during analysis.
+- [x] Replaced flat AG Grid transaction table with grouped diagnostic history run cards aggregated by `simulationId`, showing merchant name, failure type & origin tags, relative time, transaction count, diagnosis status, confidence badge, and expandable chevron sub-table for transaction IDs, outcomes, and case statuses.
 
 Relevant paths:
 
@@ -215,12 +221,14 @@ Depends on M10 being verified.
 - [ ] Running a second diagnostic replaces "latest" but old row remains.
 ---
  
-## M13: Network Overview and attention strip
+## M13: Network Overview and attention strip — PARTIALLY COMPLETE
  
 - [ ] `/admin/network`: active incidents, latest diagnosis, system-recorded actions, merchant health. (Rename "automatic actions" to "system-recorded actions" everywhere; PayProof records escalations, it does not act autonomously.)
 - [ ] Dismissible attention strip on `/admin`; dismissal stored per session; hidden when nothing to show.
 - [ ] Network nav badge shows active incident count.
 - [ ] Owner-session middleware on `/admin/**` and `/api/admin/**`; merchant session returns 401/403.
+- [x] Network nav badge shows active incident COUNT number inside the badge, not just a red dot
+- [x] middleware.ts must protect /api/admin/** with owner session check — currently /api/admin/** is completely unprotected
 **Acceptance checks**
 - [ ] Empty database state renders cleanly with no strip and no badge.
 - [ ] After an M10 compressed run: incident card, badge, strip all appear; dismiss hides strip until next new incident.
@@ -228,8 +236,32 @@ Depends on M10 being verified.
 - [ ] All links on the page resolve.
 - [ ] Light re-check of M5-M9 behavior (analytics totals, incident thresholds, merchant isolation) with the same data.
 ---
+
+## M13-N — Automatic incident notifications — COMPLETE
+
+- [x] Auto-send email via Resend immediately (no admin approval) when incident type is CARDING_PATTERN or FAILURE_SPIKE and confidence is high. FAILURE_SPIKE auto-send threshold is >80% failure rate.
+- [x] All other incident types (AGENT_REVIEW_REQUIRED, CASE_THRESHOLD_EXCEEDED, medium/low confidence) remain draft + admin approval. Do not change that flow.
+- [x] Email recipient: raox58@gmail.com (demo). Subject and body generated by Groq with hardcoded fallback template if Groq fails.
+- [x] Attach autoNotified, autoNotifiedAt, autoNotifiedChannel to incident record on success. Attach autoNotified: false and autoNotifyError on failure. Send failure must never block incident detection from returning.
+- [x] Incident card shows "✉ Merchant notified automatically · [time]" badge on auto-sent incidents. Shows amber warning if send failed.
+- [x] Incident modal for auto-sent incidents shows read-only view of sent message with "Send follow-up" option instead of "Prepare merchant response".
+---
+
+## M13-O — Agent actions in live feed
+
+- [ ] Add [ACTION] event level to the live feed in TransactionSimulations.tsx. Color: cyan.
+- [ ] After each FAILED AGENT response event in the feed, inject two ACTION rows immediately:
+        [ACTION] Recovery suppressed · {merchant}
+        [ACTION] Case escalated for human review · {caseId}
+- [ ] After an auto-notification fires (autoNotified: true on the incident), inject:
+        [ACTION] Merchant notified automatically · {merchant}
+        sub: ✉ Sent to raox58@gmail.com · {incidentType}
+- [ ] ACTION rows appear inline at the moment the action is taken, not batched at the end of the run.
+---
  
-## M13A: Cross-merchant pattern detection (new; this is the "Network" signal)
+## M13A: Cross-merchant pattern detection (new; this is the "Network" signal) — NOT STARTED
+ 
+> Network incident mode in TransactionSimulations.tsx fires parallel simulations per merchant under a shared networkBatchId but does NOT generate cross-merchant signals (no shared card hash or agent channel grouping). M13A detection logic does not exist yet in lib/incident-detector.ts.
  
 M6 detects spikes per merchant. This milestone detects patterns across merchants.
  
@@ -242,7 +274,7 @@ M6 detects spikes per merchant. This milestone detects patterns across merchants
 - [ ] Same volume at one merchant creates only the M6 incident, not a cross-merchant one.
 ---
  
-## M14: Live payment diagnosis
+## M14: Live payment diagnosis — PARTIALLY IMPLEMENTED (WRONG ARCHITECTURE)
  
 - [ ] Trigger diagnosis from real failed-checkout records (human and agent paths), reusing the M11 evidence-summary approach. Remove any dependence on `simulationId`; key by `paymentEventId` or case.
 - [ ] Evidence: processor response, AVS/CVV, origin, merchant's recent event pattern, cross-merchant incident if any.
@@ -250,12 +282,18 @@ M6 detects spikes per merchant. This milestone detects patterns across merchants
 - [ ] Data gaps: when fields are absent, state the gap and use rule-based fallback.
 - [ ] Advisory only; no money movement, customer contact or checkout blocking.
 - [ ] Diagnosis runs after the failure is recorded (async); a diagnosis failure must never fail the checkout response.
+- [ ] Diagnosis must run async AFTER failure is recorded — currently runs synchronously on poll, blocking response
+- [ ] Groq must be called for diagnosis interpretation — currently pure rule-based only, no Groq integration
+- [ ] Diagnosis result must surface on case view (app/owner/cases) and merchant portal (app/merchant)
+- [ ] Cross-merchant incident context missing from diagnosis evidence
 **Acceptance checks**
 - [ ] A real Sandbox failed checkout (non-simulator) produces a diagnosis on its case.
 - [ ] Checkout latency is unchanged when Groq is slow or down.
 ---
  
-## M15A: Agent channel identity (new prerequisite for freezing)
+## M15A: Agent channel identity (new prerequisite for freezing) — NOT STARTED
+ 
+> Connector route currently validates only against a single static CONNECTOR_SHARED_SECRET. No AgentChannel model exists in schema.prisma. agentChannelId is not recorded on Order or PaymentEvent.
  
 - [ ] Replace the single `CONNECTOR_SHARED_SECRET` model with per-channel credentials: `AgentChannel { id, name, merchantId?, secretHash, status, createdAt }`. Store only a hash of each secret.
 - [ ] Connector route resolves the channel from the bearer token; record `agentChannelId` on every connector order and payment event.
@@ -266,7 +304,7 @@ M6 detects spikes per merchant. This milestone detects patterns across merchants
 - [ ] Invalid secret returns 401 and records nothing.
 ---
  
-## M15B: Channel freeze and restore
+## M15B: Channel freeze and restore — NOT STARTED
  
 - [ ] Freeze requires a human action from an authenticated merchant (own channels) or owner; records actor, reason, timestamp in the audit log.
 - [ ] Frozen channel: connector returns a structured rejection (`code: "CHANNEL_FROZEN"`, reason, contact guidance) with HTTP 403 and records the rejected attempt.
@@ -280,7 +318,9 @@ M6 detects spikes per merchant. This milestone detects patterns across merchants
 - [ ] Audit log shows who/why for each freeze, restore and rejection.
 ---
  
-## M16: Live diagnosis stream panel
+## M16: Live diagnosis stream panel — NOT STARTED
+ 
+> No SSE routes exist in the codebase. The live stream panel at /admin/live-transaction uses a polling JSON endpoint (GET /api/admin/live-transactions every 4s) with client-side template strings simulating stream events. Groq streaming is not used. Terminal component does not appear on Network Overview or merchant portal.
  
 - [ ] Server emits a stream (SSE) of **real pipeline events**, each produced by actual code: `INFO` (query run, rows read, window checked), `WARN` (threshold exceeded, mismatch, missing fields), `SUCCESS`/`ALERT` (conclusion).
 - [ ] Each line carries a type, message, and a reference (table/count/incident id) so it can be traced.
@@ -309,4 +349,34 @@ M6 detects spikes per merchant. This milestone detects patterns across merchants
 - [ ] Confirm target database, then apply pending migrations in order (diagnosis, new event columns, channels, incident records, inventory removal last).
 - [ ] Re-run M10-M17 acceptance checks on the deployed app. Use the existing Vercel project.
 - [ ] Update the handoff block with the real last verified milestone and date.
+
+---
+
+## Recent Updates (November 2026)
+
+### 1. Active Incidents — Modern Response Modal (`components/admin/Incidents.tsx`)
+- Replaced card downward-expansion with a dedicated overlay modal.
+- State-aware loading screen while AI generates draft with text glow and pulse animation: "Agent is preparing the draft... Synthesizing incident signals...".
+- Clean modal design with tabs for Email Dispatch (Resend integration with email validation) and Chatbox / Direct Copy.
+- Fully editable subject line and response message text areas with copy-to-clipboard functionality.
+- Resend email sending with instant feedback and inline error handling.
+
+### 2. Transaction Simulations — Live Stream Feed & Network Incident Mode (`components/admin/TransactionSimulations.tsx`)
+- **Configurator UI & Network Incident Mode**:
+  - Added dedicated toggle row with globe icon + "Network incident mode" and smooth animated height transition (150ms).
+  - Multi-merchant checklist showing all 5 merchants from `DEMO_MERCHANTS` (Apex Outpost, Beacon Supply, Field & Form, Northstar Goods, Solis Studio) with "Select all merchants" bidirectional synchronization.
+  - Inline validation text in red (`"Select at least one merchant to run a network incident."`) preventing API calls when zero merchants are selected.
+  - Dynamic "SCENARIO" dropdown between Failure type and merchant checklist with automatic presets:
+    - *PayPal / Braintree infrastructure outage* -> Gateway timeout (`network_timeout`), Origin `HUMAN`
+    - *Coordinated carding attack* -> Processor decline (`processor_decline`), Origin `HUMAN`, Failure count `6`
+    - *AVS service degradation* -> AVS mismatch (`avs_mismatch`), Origin `HUMAN`
+    - *Gateway timeout (network-wide)* -> Gateway timeout (`network_timeout`), Time compression `compressed`
+  - Added small muted hint: `"Set by scenario — you can override this."` below Failure type, cleared on manual edit.
+  - Run button dynamically toggles label: `"Run network incident"` vs `"Run diagnostic"`.
+- **Parallel Streaming & Sequential Analysis**:
+  - `POST /api/demo/simulations` fired once per merchant concurrently via `Promise.all` with client-generated `networkBatchId` and `scenarioName`.
+  - Sequential Groq analysis execution loop (`POST /api/admin/simulate/analyze`) after all streams complete, respecting rate limits and updating live feed status indicators.
+- **Diagnostic History Bundling**:
+  - Grouped runs with $\ge 2$ entries sharing `networkBatchId` render inside a unified incident container with banner `🌐 Network incident · [scenarioName] · [relative time]`, maintaining individual nested expandability.
+
  

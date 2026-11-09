@@ -1,9 +1,10 @@
 import "server-only";
 import { getDatabase } from "@/db/client";
+import { sendAutoIncidentNotification, type AutoNotificationResult } from "@/lib/incident-notifications";
 
 type IncidentType = "FAILURE_SPIKE" | "CARDING_PATTERN" | "AGENT_REVIEW_REQUIRED" | "CASE_THRESHOLD_EXCEEDED";
 type IncidentAction = "NOTIFY_MERCHANT" | "FLAG_FOR_MONITORING" | "DISMISS";
-type Incident = {
+export type Incident = {
   id: string;
   type: IncidentType;
   merchantName: string;
@@ -11,12 +12,25 @@ type Incident = {
   summary: string;
   detail: string;
   confidence: string;
+  confidenceReason?: string;
   detectedAt: string;
   flagged: boolean;
   actions: IncidentAction[];
   caseCount?: number;
   oldestCaseAgeHours?: number;
+  failureRate?: number;
+  failureCount?: number;
+  windowMinutes?: number;
+  autoNotified?: boolean;
+  autoNotifiedAt?: string;
+  autoNotifiedChannel?: string;
+  autoNotifyError?: string;
+  sentSubject?: string;
+  sentBody?: string;
+  sentRecipient?: string;
 };
+
+const autoNotifiedCache = new Map<string, AutoNotificationResult>();
 
 const actions: IncidentAction[] = ["NOTIFY_MERCHANT", "FLAG_FOR_MONITORING", "DISMISS"];
 
@@ -105,6 +119,7 @@ export async function detectIncidents(): Promise<Incident[]> {
     const failureRate = group.events.length ? failures.length / group.events.length : 0;
     if (group.events.length >= 5 && failureRate > 0.5) {
       const classification = classifyFailures(failures);
+      const isHighConfidence = failureRate > 0.8 || failures.length >= 6;
       incidents.push({
         id: `FAILURE_SPIKE:${merchantId}`,
         type: "FAILURE_SPIKE",
@@ -112,7 +127,11 @@ export async function detectIncidents(): Promise<Incident[]> {
         merchantId,
         summary: `${Math.round(failureRate * 100)}% of ${group.events.length} payment attempts failed in the last 15 minutes.`,
         detail: `${failures.length} failed attempts · ${fifteenMinutesAgo.toISOString()} to ${detectedAt.toISOString()} · ${classification}`,
-        confidence: classification,
+        confidence: isHighConfidence ? "High" : "Medium",
+        confidenceReason: classification,
+        failureRate,
+        failureCount: failures.length,
+        windowMinutes: 15,
         detectedAt: detectedAt.toISOString(),
         flagged: false,
         actions,
@@ -129,7 +148,10 @@ export async function detectIncidents(): Promise<Incident[]> {
         merchantId,
         summary: `${failedOrderIds.length} distinct orders failed in the last 5 minutes.`,
         detail: `Failed orders: ${failedOrderIds.length} · ${fiveMinutesAgo.toISOString()} to ${detectedAt.toISOString()}`,
-        confidence: "Possible carding attack — elevated rapid failures detected",
+        confidence: "High",
+        confidenceReason: "Possible carding attack — elevated rapid failures detected",
+        failureCount: failedOrderIds.length,
+        windowMinutes: 5,
         detectedAt: detectedAt.toISOString(),
         flagged: false,
         actions,
@@ -214,7 +236,36 @@ export async function detectIncidents(): Promise<Incident[]> {
     });
     return { incident, state };
   }));
-  return states
+  const results = states
     .filter(({ state }) => state.action !== "DISMISS")
     .map(({ incident, state }) => ({ ...incident, detectedAt: state.firstDetectedAt.toISOString(), flagged: state.action === "FLAG_FOR_MONITORING" }));
+
+  // M13-N: Auto-send incident notifications for high confidence CARDING_PATTERN or high rate FAILURE_SPIKE
+  for (const incident of results) {
+    const isHigh = typeof incident.confidence === "string" && incident.confidence.toLowerCase() === "high";
+    const isCardingAutoSend = incident.type === "CARDING_PATTERN" && isHigh;
+    const isSpikeAutoSend = incident.type === "FAILURE_SPIKE" && isHigh && (incident.failureRate ?? 0) > 0.8;
+
+    if (isCardingAutoSend || isSpikeAutoSend) {
+      const cached = autoNotifiedCache.get(incident.id);
+      if (cached) {
+        Object.assign(incident, cached);
+      } else {
+        try {
+          const sendResult = await sendAutoIncidentNotification(incident);
+          autoNotifiedCache.set(incident.id, sendResult);
+          Object.assign(incident, sendResult);
+        } catch (err) {
+          const failRecord: AutoNotificationResult = {
+            autoNotified: false,
+            autoNotifyError: (err instanceof Error ? err.message : String(err)).slice(0, 200),
+          };
+          autoNotifiedCache.set(incident.id, failRecord);
+          Object.assign(incident, failRecord);
+        }
+      }
+    }
+  }
+
+  return results;
 }

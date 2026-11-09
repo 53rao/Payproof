@@ -1,6 +1,137 @@
 import "server-only";
 import { getDatabase } from "@/db/client";
 import { DEMO_MERCHANTS } from "@/lib/merchants";
+import { sendIncidentEmail } from "@/lib/resend-email";
+
+export type AutoNotificationResult = {
+  autoNotified: boolean;
+  autoNotifiedAt?: string;
+  autoNotifiedChannel?: string;
+  autoNotifyError?: string;
+  sentSubject?: string;
+  sentBody?: string;
+  sentRecipient?: string;
+};
+
+export async function sendAutoIncidentNotification(incident: {
+  id: string;
+  type: string;
+  merchantName: string;
+  merchantId?: string;
+  summary: string;
+  detail: string;
+  confidence: string;
+  confidenceReason?: string;
+  detectedAt: string;
+  failureRate?: number;
+  failureCount?: number;
+  windowMinutes?: number;
+}): Promise<AutoNotificationResult> {
+  const recipient = "raox58@gmail.com";
+  const subject =
+    incident.type === "CARDING_PATTERN"
+      ? `⚠️ Security alert — possible carding attack detected on ${incident.merchantName}`
+      : `⚠️ Payment alert — elevated failure rate detected on ${incident.merchantName}`;
+
+  const evidenceSummary =
+    incident.summary ||
+    (incident.detail ? incident.detail.split("·")[0].trim() : "Multiple rapid failures were recorded.");
+
+  const fallbackBody = `PayProof detected ${incident.type} on ${incident.merchantName} at ${incident.detectedAt}. ${evidenceSummary}. Please review your recent payment activity and contact your platform administrator immediately. — PayProof Network`;
+
+  let body = fallbackBody;
+  const apiKey = process.env.GROQ_API_KEY;
+
+  if (apiKey) {
+    try {
+      const model = process.env.GROQ_MODEL?.trim() || "openai/gpt-oss-20b";
+      const groqResponse = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        signal: AbortSignal.timeout(10_000),
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          temperature: 0.2,
+          max_completion_tokens: 300,
+          messages: [
+            {
+              role: "system",
+              content:
+                "Write a concise urgent merchant notification email body. Plain language, no jargon. Tell the merchant what was detected, what it means for them, and what they should do right now. Maximum 150 words. No subject line. Sign off as PayProof Network.",
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                incidentType: incident.type,
+                merchantName: incident.merchantName,
+                evidence: {
+                  failureCount: incident.failureCount,
+                  rate: incident.failureRate ? `${Math.round(incident.failureRate * 100)}%` : undefined,
+                  window: incident.windowMinutes ? `${incident.windowMinutes} minutes` : undefined,
+                  summary: incident.summary,
+                  detail: incident.detail,
+                },
+                confidence: incident.confidence,
+                confidenceReason: incident.confidenceReason ?? incident.detail,
+                detectedAt: incident.detectedAt,
+              }),
+            },
+          ],
+        }),
+      });
+
+      if (groqResponse.ok) {
+        const payload = (await groqResponse.json()) as { choices?: { message?: { content?: string | null } }[] };
+        const content = payload.choices?.[0]?.message?.content?.trim();
+        if (content && content.length > 20) {
+          body = content;
+        }
+      }
+    } catch {
+      // Use fallbackBody on Groq failure
+    }
+  }
+
+  try {
+    await sendIncidentEmail({
+      incidentId: incident.id,
+      to: recipient,
+      subject,
+      text: body,
+    });
+
+    const db = getDatabase();
+    if (db && incident.merchantId) {
+      await db.agentActionLog
+        .create({
+          data: {
+            type: "MERCHANT_NOTIFICATION_EMAIL_SENT",
+            merchantId: incident.merchantId,
+            detail: `Auto-notification for incident ${incident.id} (${incident.type}) sent to ${recipient}. Subject: ${subject}`,
+          },
+        })
+        .catch((e) => console.error("Could not record auto-notification action log", e));
+    }
+
+    return {
+      autoNotified: true,
+      autoNotifiedAt: new Date().toISOString(),
+      autoNotifiedChannel: "email",
+      sentSubject: subject,
+      sentBody: body,
+      sentRecipient: recipient,
+    };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    return {
+      autoNotified: false,
+      autoNotifyError: errorMsg.slice(0, 200),
+      sentSubject: subject,
+      sentBody: body,
+      sentRecipient: recipient,
+    };
+  }
+}
 
 type DraftInput = {
   type: string;

@@ -289,8 +289,48 @@ export async function listDatabaseDashboardSimulations() {
     take: 100,
     include: { paymentEvents: { where: { type: "CAPTURE_RESULT" }, orderBy: { createdAt: "desc" }, take: 1 }, cases: { select: { id: true }, take: 1 } },
   });
+
+  // Extract all simToken identifiers from idempotency keys to match against simulation_diagnoses
+  const candidateIds = new Set<string>();
+  for (const order of orders) {
+    const keyParts = order.idempotencyKey.split("-");
+    const simToken = keyParts[2] ?? "";
+    if (simToken) {
+      candidateIds.add(simToken);
+      candidateIds.add(simToken.toLowerCase());
+      candidateIds.add(simToken.toUpperCase());
+      if (simToken.length === 32) {
+        const uuid = `${simToken.slice(0, 8)}-${simToken.slice(8, 12)}-${simToken.slice(12, 16)}-${simToken.slice(16, 20)}-${simToken.slice(20)}`.toLowerCase();
+        candidateIds.add(uuid);
+      }
+    }
+  }
+
+  const diagnoses = candidateIds.size > 0
+    ? await db.simulationDiagnosis.findMany({
+        where: { simulationId: { in: Array.from(candidateIds) } },
+        select: { simulationId: true, patternDetected: true, confidence: true },
+      })
+    : [];
+
+  const diagnosisMap = new Map<string, { patternDetected: string; confidence: string }>();
+  for (const d of diagnoses) {
+    const value = { patternDetected: d.patternDetected, confidence: d.confidence };
+    diagnosisMap.set(d.simulationId, value);
+    diagnosisMap.set(d.simulationId.toLowerCase(), value);
+    const unhyphenated = d.simulationId.replaceAll("-", "");
+    diagnosisMap.set(unhyphenated.toLowerCase(), value);
+    diagnosisMap.set(unhyphenated.toUpperCase(), value);
+  }
+
   const ftMap: Record<string, string> = { PD: "processor_decline", IE: "instrument_expired", DI: "duplicate_invoice", NT: "network_timeout" };
-  const merchMap: Record<string, string> = { NS: "northstar", FF: "fieldform" };
+  const merchMap: Record<string, string> = {
+    NS: "northstar",
+    FF: "fieldform",
+    AO: "apex",
+    BS: "beacon",
+    SS: "solis",
+  };
   return orders.map((order) => {
     const keyParts = order.idempotencyKey.split("-");
     const event = order.paymentEvents[0];
@@ -300,6 +340,7 @@ export async function listDatabaseDashboardSimulations() {
       // SIMDASH-V2F-<simToken32>-<ftShort>-<merchantShort>-<originShort>-<seq>-<rand8>
       const simToken = keyParts[2] ?? "";
       const simulationId = simToken.length === 32 ? `${simToken.slice(0, 8)}-${simToken.slice(8, 12)}-${simToken.slice(12, 16)}-${simToken.slice(16, 20)}-${simToken.slice(20)}`.toLowerCase() : simToken || null;
+      const matchedDiag = (simulationId && diagnosisMap.get(simulationId)) || (simToken && diagnosisMap.get(simToken)) || null;
       const failureType = ftMap[keyParts[3] ?? ""] ?? "unknown";
       const merchantId = merchMap[keyParts[4] ?? ""] ?? "unknown";
       return {
@@ -314,10 +355,14 @@ export async function listDatabaseDashboardSimulations() {
         caseId: order.cases[0]?.id ?? null,
         caseCreated: order.cases.length > 0,
         createdAt: order.createdAt.toISOString(),
+        patternDetected: matchedDiag?.patternDetected ?? null,
+        confidence: matchedDiag?.confidence ?? null,
       };
     }
     if (keyParts[1] === "V2") {
       // Legacy short form: SIMDASH-V2-<sim8>-<ftShort>-<merchantShort>-<originShort>-<seq>-<rand8>
+      const simToken = keyParts[2] ?? "";
+      const matchedDiag = (simToken && diagnosisMap.get(simToken)) || null;
       const failureType = ftMap[keyParts[3] ?? ""] ?? "unknown";
       const merchantId = merchMap[keyParts[4] ?? ""] ?? "unknown";
       return {
@@ -332,10 +377,26 @@ export async function listDatabaseDashboardSimulations() {
         caseId: order.cases[0]?.id ?? null,
         caseCreated: order.cases.length > 0,
         createdAt: order.createdAt.toISOString(),
+        patternDetected: matchedDiag?.patternDetected ?? null,
+        confidence: matchedDiag?.confidence ?? null,
       };
     }
     const scenario = `${keyParts[1]?.toLowerCase() ?? "unknown"}_${keyParts[2]?.toLowerCase() ?? "unknown"}`;
-    return { id: order.id, simulationId: null, scenario, failureType: "legacy", merchantId: "unknown", origin: order.checkoutOrigin, outcome: event?.paymentStatus ?? order.status, transactionId, caseId: order.cases[0]?.id ?? null, caseCreated: order.cases.length > 0, createdAt: order.createdAt.toISOString() };
+    return {
+      id: order.id,
+      simulationId: null,
+      scenario,
+      failureType: "legacy",
+      merchantId: "unknown",
+      origin: order.checkoutOrigin,
+      outcome: event?.paymentStatus ?? order.status,
+      transactionId,
+      caseId: order.cases[0]?.id ?? null,
+      caseCreated: order.cases.length > 0,
+      createdAt: order.createdAt.toISOString(),
+      patternDetected: null,
+      confidence: null,
+    };
   });
 }
 
