@@ -432,7 +432,7 @@ export default function OrderActivityClient() {
                         </td>
                         <td>
                           {order.case ? (
-                            <Link href={`/owner/cases?caseId=${encodeURIComponent(order.case.id)}`} className="pp-activity-case-link">
+                            <Link href={`/admin/cases?caseId=${encodeURIComponent(order.case.id)}`} className="pp-activity-case-link">
                               Review {order.case.id} →
                             </Link>
                           ) : (

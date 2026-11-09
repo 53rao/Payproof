@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
+import { verifyRequestOrigin } from "@/lib/auth";
+import { getCaseAccess } from "@/lib/case-access";
 import { addMerchantCaseNote } from "@/lib/merchant-case-notes";
 import { containsProhibitedPaymentData } from "@/lib/privacy";
 
 type Context = { params: Promise<{ caseId: string }> };
 export async function POST(request: Request, { params }: Context) {
   if (!verifyRequestOrigin(request)) return NextResponse.json({ error: "Request origin was not accepted." }, { status: 403 });
-  if (!await hasOwnerSession()) return NextResponse.json({ error: "Owner sign-in is required." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) return NextResponse.json({ error: "Send the note as JSON." }, { status: 415 });
   try {
     const { caseId } = await params;
+    if (!await getCaseAccess(caseId)) return NextResponse.json({ error: "Sign-in is required for this case." }, { status: 401, headers: { "Cache-Control": "no-store" } });
     const body: unknown = await request.json();
     const text = body && typeof body === "object" ? (body as { text?: unknown }).text : undefined;
     if (typeof text !== "string" || !text.trim()) return NextResponse.json({ error: "Enter a note before saving." }, { status: 400 });

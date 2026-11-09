@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
-import { getMerchantSession, getOwnerSession } from "@/lib/auth";
-import CasesListClient from "./CasesListClient";
 
 export const dynamic = "force-dynamic";
-export default async function OwnerCasesPage() {
-  try {
-    const isOwner = await getOwnerSession();
-    const isMerchant = await getMerchantSession();
-    if (!isOwner && !isMerchant) redirect("/login?next=%2Fowner%2Fcases");
-  } catch {
-    redirect("/login?next=%2Fowner%2Fcases");
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function OwnerCasesPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string") query.set(key, value);
   }
-  return <CasesListClient />;
+  const suffix = query.size ? `?${query.toString()}` : "";
+  redirect(`/admin/cases${suffix}`);
 }

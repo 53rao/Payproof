@@ -384,6 +384,10 @@
   color: #83ce92;
 }
 
+.pp-live-log.action b {
+  color: #22d3ee;
+}
+
 .pp-live-log small {
   grid-column: 3;
   color: #73808a;
@@ -700,4 +704,171 @@
   .pp-live-stream header > span.connecting i,
   .pp-live-step-marker i,
   .pp-live-stream-empty i { animation: none; }
+}
+
+/* Recent agent actions — full-width monitoring surface (same tone as live scan stream) */
+.pp-live-agent-actions {
+  margin-top: 18px;
+  overflow: hidden;
+  border: 1px solid #252629;
+  border-radius: 13px;
+  background: #111214;
+  color: #eff1f3;
+}
+
+.pp-live-agent-actions header {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 17px;
+  border-bottom: 1px solid #33363a;
+  background: #202124;
+}
+
+.pp-live-agent-actions header > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pp-live-agent-actions header svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: #22d3ee;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.7;
+}
+
+.pp-live-agent-actions header h2 {
+  margin: 0;
+  color: #f5f6f7;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
+.pp-live-agent-actions header p {
+  margin: 2px 0 0;
+  color: #8b949d;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.pp-live-agent-actions-status {
+  color: #f0ac67;
+  font-size: 9px;
+  text-align: right;
+}
+
+.pp-live-agent-actions-body {
+  box-sizing: border-box;
+  display: flex;
+  height: 220px;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  scrollbar-color: #4a4d51 #171819;
+  scrollbar-width: thin;
+}
+
+.pp-live-agent-action {
+  padding: 7px 10px;
+  border-left: 2px solid transparent;
+  border-radius: 6px;
+  background: #171819;
+}
+
+.pp-live-agent-action.age-now {
+  border-left-color: #22d3ee;
+  opacity: 1;
+}
+
+.pp-live-agent-action.age-new {
+  border-left-color: #f0ac67;
+  opacity: 1;
+}
+
+.pp-live-agent-action.age-old {
+  border-left-color: transparent;
+  opacity: 0.6;
+}
+
+.pp-live-agent-action-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pp-live-agent-action-top b {
+  color: #e9edf0;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.pp-live-agent-action-top time {
+  margin-left: auto;
+  color: #7e8992;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pp-live-agent-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.pp-live-agent-tag.tag-muted-yellow {
+  background: rgba(216, 194, 106, 0.14);
+  color: #d8c26a;
+}
+
+.pp-live-agent-tag.tag-amber {
+  background: rgba(240, 172, 103, 0.16);
+  color: #f0ac67;
+}
+
+.pp-live-agent-tag.tag-cyan {
+  background: rgba(34, 211, 238, 0.14);
+  color: #67e8f9;
+}
+
+.pp-live-agent-tag.tag-gray {
+  background: rgba(148, 163, 184, 0.16);
+  color: #a8b3bd;
+}
+
+.pp-live-agent-action p {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: #aab3bb;
+  font-size: 9.5px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-live-agent-actions-empty {
+  margin: 0;
+  padding: 12px 8px;
+  color: #89939c;
+  font-size: 10px;
+}
+
+@media (max-width: 560px) {
+  .pp-live-agent-actions header { align-items: flex-start; flex-direction: column; }
+  .pp-live-agent-actions-status { text-align: left; }
 }

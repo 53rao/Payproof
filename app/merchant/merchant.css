@@ -259,6 +259,7 @@
   color: var(--pp-ink);
 }
 
+
 .pp-merchant-pill {
   display: inline-flex;
   align-items: center;
@@ -296,6 +297,148 @@
 .pp-merchant-origin.unknown {
   background: #f1eee6;
   color: var(--pp-muted);
+}
+
+/* Read-only case list */
+.pp-merchant-case-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 16px 22px;
+  border-bottom: 1px solid #ede8de;
+  background: #fbf9f4;
+}
+
+.pp-merchant-case-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #ede8de;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 12px 14px;
+}
+
+.pp-merchant-case-stat span {
+  color: var(--pp-muted);
+  font-size: 10.5px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pp-merchant-case-stat strong {
+  color: var(--pp-ink);
+  font-size: 22px;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+
+.pp-merchant-case-stat.is-action strong {
+  color: var(--pp-orange);
+}
+
+.pp-merchant-case-list {
+  display: grid;
+}
+
+.pp-merchant-case-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  align-items: center;
+  padding: 14px 22px;
+  border-bottom: 1px solid #f2ede4;
+}
+
+.pp-merchant-case-row:last-child {
+  border-bottom: none;
+}
+
+.pp-merchant-case-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pp-merchant-case-short {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--pp-ink);
+}
+
+.pp-merchant-case-status,
+.pp-merchant-case-origin {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pp-merchant-case-status.open {
+  background: #fff0eb;
+  color: #9c2e22;
+}
+
+.pp-merchant-case-status.review {
+  background: #fff7e6;
+  color: #9a6700;
+}
+
+.pp-merchant-case-origin.agent {
+  background: #fff0eb;
+  color: var(--pp-orange);
+}
+
+.pp-merchant-case-origin.store {
+  background: #f1eee6;
+  color: var(--pp-muted);
+}
+
+.pp-merchant-case-meta {
+  display: flex;
+  align-items: baseline;
+  justify-self: end;
+  gap: 10px;
+}
+
+.pp-merchant-case-meta strong {
+  color: var(--pp-ink);
+  font-size: 12.5px;
+}
+
+.pp-merchant-case-meta time {
+  color: var(--pp-subtle);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.pp-merchant-case-line {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--pp-subtle);
+  font-size: 11px;
+}
+
+@media (max-width: 560px) {
+  .pp-merchant-case-stats {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px 16px;
+  }
+
+  .pp-merchant-case-row {
+    padding: 13px 16px;
+  }
+
+  .pp-merchant-case-meta {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
 }
 
 .pp-merchant-empty {

@@ -14,6 +14,7 @@ type MerchantHealth = {
 export function MerchantHealthSummary() {
   const [merchants, setMerchants] = useState<MerchantHealth[]>([]);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -25,6 +26,8 @@ export function MerchantHealthSummary() {
         if (active) { setMerchants(body.merchants ?? []); setError(""); }
       } catch (cause) {
         if (active) setError(cause instanceof Error ? cause.message : "Merchant health could not be loaded.");
+      } finally {
+        if (active) setLoading(false);
       }
     };
     void refresh();
@@ -38,6 +41,7 @@ export function MerchantHealthSummary() {
     className="pp-merchant-health"
     style={{ backgroundColor: "#17243b", color: "#ffffff", borderColor: "#23334d" }}
     aria-labelledby="pp-merchant-health-title"
+    aria-busy={loading}
   >
     <header className="pp-panel-head">
       <div>
@@ -45,7 +49,16 @@ export function MerchantHealthSummary() {
         <p style={{ color: "#94a3b8" }}>Open cases and failure rates by merchant</p>
       </div>
     </header>
-    {error ? <p className="pp-merchant-health-error" role="alert">{error}</p> : <div className="pp-merchant-health-list" role="table" aria-label="Merchant health summary">
+    {error ? <p className="pp-merchant-health-error" role="alert">{error}</p> : loading && !merchants.length ? <div className="pp-merchant-health-list is-loading" role="status" aria-label="Loading merchant health">
+      <div className="pp-merchant-health-row pp-merchant-health-head" role="row"><span role="columnheader">Merchant</span><span role="columnheader">Open cases</span><span role="columnheader">Failure rate</span><span role="columnheader">Health</span><span role="columnheader"/></div>
+      {[0, 1, 2, 3, 4].map((row) => <div className="pp-merchant-health-row pp-merchant-health-skeleton" key={row}>
+        <span className="pp-skeleton" style={{ width: "70%" }} />
+        <span className="pp-skeleton" style={{ width: 26 }} />
+        <span className="pp-skeleton" style={{ width: 34 }} />
+        <span className="pp-skeleton pp-skeleton-badge" />
+        <span className="pp-skeleton" style={{ width: 58 }} />
+      </div>)}
+    </div> : <div className="pp-merchant-health-list" role="table" aria-label="Merchant health summary">
       <div className="pp-merchant-health-row pp-merchant-health-head" role="row"><span role="columnheader">Merchant</span><span role="columnheader">Open cases</span><span role="columnheader">Failure rate</span><span role="columnheader">Health</span><span role="columnheader"/></div>
       {merchants.map((merchant) => {
         const eventCount = merchant.paymentEvents;
@@ -57,7 +70,7 @@ export function MerchantHealthSummary() {
           <span role="cell">{merchant.openCases ?? 0}</span>
           <span role="cell">{Math.round(failureRate * 100)}%</span>
           <span role="cell"><b className={`pp-health-badge ${health}`}>{label}</b></span>
-          <span role="cell"><a href={`/owner/cases?merchantId=${encodeURIComponent(merchant.id)}`}>View cases</a></span>
+          <span role="cell"><a href={`/admin/cases?merchantId=${encodeURIComponent(merchant.id)}`}>View cases</a></span>
         </div>;
       })}
     </div>}

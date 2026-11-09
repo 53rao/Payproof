@@ -22,6 +22,7 @@ const actionIcons: Record<AgentAction["type"], "box" | "alert" | "minus"> = {
 
 export function AgentActions({ variant = "panel" }: { variant?: "panel" | "rail" }) {
   const [actions, setActions] = useState<AgentAction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -35,11 +36,13 @@ export function AgentActions({ variant = "panel" }: { variant?: "panel" | "rail"
           const supported = Array.isArray(body.actions)
             ? (body.actions as AgentAction[]).filter((action) => Object.hasOwn(labels, action.type))
             : [];
-          setActions(supported);
+          setActions(variant === "rail" ? supported.slice(0, 5) : supported);
           setError("");
         }
       } catch (cause) {
         if (active) setError(cause instanceof Error ? cause.message : "Agent actions could not be loaded.");
+      } finally {
+        if (active) setLoading(false);
       }
     };
     void refresh();
@@ -47,12 +50,12 @@ export function AgentActions({ variant = "panel" }: { variant?: "panel" | "rail"
       if (document.visibilityState === "visible") void refresh();
     }, 15_000);
     return () => { active = false; window.clearInterval(timer); };
-  }, []);
+  }, [variant]);
 
   const isRail = variant === "rail";
   return <aside className={isRail ? "pp-feed pp-agent-actions-feed" : "pp-agent-actions pp-agent-actions-panel"} aria-labelledby="pp-agent-actions-title" aria-live="polite">
     <header className={isRail ? "pp-agent-actions-rail-heading" : "pp-agent-actions-panel-heading"}><div><h2 id="pp-agent-actions-title">Agent Actions</h2><p>Escalations and recovery safeguards recorded by PayProof.</p></div></header>
-    {error ? <p className="pp-agent-actions-error" role="alert">{error}</p> : actions.length ? <ol className={`pp-agent-actions-list${isRail ? " pp-feed-list" : ""}`}>
+    {error ? <p className="pp-agent-actions-error" role="alert">{error}</p> : loading && !actions.length ? <AgentActionsSkeleton variant={isRail ? "rail" : "panel"}/> : actions.length ? <ol className={`pp-agent-actions-list${isRail ? " pp-feed-list" : ""}`}>
       {actions.map((action) => <li key={action.id} className={`pp-agent-action ${action.type.toLowerCase().replaceAll("_", "-")}${isRail ? " pp-feed-event" : ""}`}>
         <span className={`pp-feed-marker pp-agent-action-marker ${action.type.toLowerCase().replaceAll("_", "-")}`}><Icon name={actionIcons[action.type]}/></span>
         <div className={isRail ? "pp-feed-copy" : "pp-agent-action-copy"}>
@@ -63,6 +66,19 @@ export function AgentActions({ variant = "panel" }: { variant?: "panel" | "rail"
       </li>)}
     </ol> : <p className="pp-agent-actions-empty">No automatic actions recorded yet.</p>}
   </aside>;
+}
+
+function AgentActionsSkeleton({ variant }: { variant: "rail" | "panel" }) {
+  return <div className={`pp-agent-actions-loading${variant === "panel" ? " is-panel" : ""}`} role="status" aria-label="Loading agent actions">
+    {[0, 1, 2, 3, 4].map((row) => <div className="pp-agent-action-skeleton" key={row}>
+      <span className="pp-skeleton pp-skeleton-marker"/>
+      <span className="pp-agent-action-copy">
+        <span className="pp-skeleton pp-skeleton-line" style={{ width: "62%" }}/>
+        <span className="pp-skeleton pp-skeleton-line" style={{ width: "44%" }}/>
+        <span className="pp-skeleton pp-skeleton-line" style={{ width: "88%" }}/>
+      </span>
+    </div>)}
+  </div>;
 }
 
 function actionSummary(action: AgentAction) {

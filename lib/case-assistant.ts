@@ -67,7 +67,7 @@ export async function getCaseSnapshot(caseId: string): Promise<CaseSnapshot | nu
       if (evidence.kind === "merchant_note" && evidence.completeness === "PRESENT") {
         const payload = evidence.payload && typeof evidence.payload === "object" ? evidence.payload as { originalText?: unknown } : {};
         const note = typeof payload.originalText === "string" ? payload.originalText : "";
-        if (note) sources.push({ id: `merchant-note:${evidence.id}`, label: "Merchant note · owner-provided, unverified", detail: note, completeness: "PRESENT", occurredAt: toISO(evidence.createdAt) });
+        if (note) sources.push({ id: `merchant-note:${evidence.id}`, label: "Merchant note · merchant-provided, unverified", detail: note, completeness: "PRESENT", occurredAt: toISO(evidence.createdAt) });
       }
     }
     const localOtherOrders = item.order.customerAccessTokenHash
@@ -99,7 +99,7 @@ export async function getCaseSnapshot(caseId: string): Promise<CaseSnapshot | nu
     { id: `payment:${order.id}`, label: "Payment result", detail: [order.status, order.issue, order.debug_id ? `debug ID ${order.debug_id}` : ""].filter(Boolean).join(" · "), completeness: "PRESENT", occurredAt: toISO(order.createdAt) },
     ...( "checkoutIssueType" in order && order.checkoutIssueType ? [{ id: `checkout-issue:${order.id}`, label: "Customer checkout issue (original wording)", detail: `${order.checkoutIssueType}${order.checkoutIssueDetails ? `\n${order.checkoutIssueDetails}` : "\nNo additional details provided."}`, completeness: "PRESENT" as const, occurredAt: toISO(order.createdAt) }] : []),
     ...(complaint ? [{ id: `complaint:${complaint.id}`, label: "Customer complaint (original text)", detail: `${complaint.type}\n${complaint.originalText}`, completeness: "PRESENT" as const, occurredAt: complaint.createdAt }] : []),
-    ...getMemoryMerchantCaseNotes(incident.id).map((note) => ({ id: `merchant-note:${note.id}`, label: "Merchant note · owner-provided, unverified", detail: note.text, completeness: "PRESENT" as const, occurredAt: note.createdAt })),
+    ...getMemoryMerchantCaseNotes(incident.id).map((note) => ({ id: `merchant-note:${note.id}`, label: "Merchant note · merchant-provided, unverified", detail: note.text, completeness: "PRESENT" as const, occurredAt: note.createdAt })),
     { id: `local-history:${order.id}`, label: "Merchant-local history · store records only", detail: memLocalSummary, completeness: "PRESENT", occurredAt: toISO(order.createdAt) },
   ];
   return {

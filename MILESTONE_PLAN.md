@@ -237,7 +237,7 @@ Depends on M10 being verified.
 - [ ] Light re-check of M5-M9 behavior (analytics totals, incident thresholds, merchant isolation) with the same data.
 ---
 
-## M13-N — Automatic incident notifications — COMPLETE
+## M13-N — Automatic incident notifications — COMPLETE (app-side runtime verified 2026-11-09; inbox delivery not independently checked)
 
 - [x] Auto-send email via Resend immediately (no admin approval) when incident type is CARDING_PATTERN or FAILURE_SPIKE and confidence is high. FAILURE_SPIKE auto-send threshold is >80% failure rate.
 - [x] All other incident types (AGENT_REVIEW_REQUIRED, CASE_THRESHOLD_EXCEEDED, medium/low confidence) remain draft + admin approval. Do not change that flow.
@@ -245,18 +245,41 @@ Depends on M10 being verified.
 - [x] Attach autoNotified, autoNotifiedAt, autoNotifiedChannel to incident record on success. Attach autoNotified: false and autoNotifyError on failure. Send failure must never block incident detection from returning.
 - [x] Incident card shows "✉ Merchant notified automatically · [time]" badge on auto-sent incidents. Shows amber warning if send failed.
 - [x] Incident modal for auto-sent incidents shows read-only view of sent message with "Send follow-up" option instead of "Prepare merchant response".
+
+### M13-N runtime verification note — 2026-11-09 (local)
+
+Environment: local dev server, owner session, configured Braintree Sandbox + Neon, Resend env present. Scenario run exactly as requested: `/admin` → Demo Tools → Transaction simulations, **Origin AGENT**, **Number of failures 6**, **Failure type Processor decline**, **Time compression Compressed**, **Merchant Northstar Goods (single)**, Network incident mode **off**.
+
+- Run result: 6/6 captures `FAILED` (`2000 · Do Not Honor`, cases created), diagnosis ready.
+- `GET /api/admin/incidents` returned `FAILURE_SPIKE:northstar` (*100% of 6 payment attempts failed in the last 15 minutes*) and `CARDING_PATTERN:northstar` (*6 distinct orders failed in the last 5 minutes*). Both had `autoNotified: true`, `autoNotifiedChannel: "email"`, `sentRecipient: "raox58@gmail.com"` (`autoNotifiedAt` 09:38:16Z and 09:38:17Z).
+- `/admin/network` rendered both incident cards with `✉ Merchant notified automatically · just now`; nav badge showed incident count `8`. No `Auto-notification failed` badge appeared.
+- DB rows inspected: `AgentActionLog` `MERCHANT_NOTIFICATION_EMAIL_SENT` rows for both incidents (09:38:17Z–09:38:34Z) with subjects `⚠️ Security alert — possible carding attack detected on Northstar Goods` and `⚠️ Payment alert — elevated failure rate detected on Northstar Goods`; `IncidentState` rows present for both incident IDs.
+- Outcome: **A (app-side)** — Resend accepted the sends and the cards show the success badge. **Inbox arrival at raox58@gmail.com was not independently inspected** (no inbox access in this environment); Resend returning a message id (required before `autoNotified: true`) is the strongest available evidence.
+- Defect observed: **duplicate sends.** Five `MERCHANT_NOTIFICATION_EMAIL_SENT` rows were written for these two incidents within ~17s (2× FAILURE_SPIKE, 3× CARDING_PATTERN). Concurrent incident polls (header, attention strip, network page) race the in-memory `autoNotifiedCache`, whose check-then-set is not atomic (dev module reload also resets it). Add persisted per-incident dedupe before calling notifications production-safe.
 ---
 
-## M13-O — Agent actions in live feed
+## M13-O — Agent actions in live feed — IMPLEMENTED LOCALLY (runtime verified 2026-11-09)
 
-- [ ] Add [ACTION] event level to the live feed in TransactionSimulations.tsx. Color: cyan.
-- [ ] After each FAILED AGENT response event in the feed, inject two ACTION rows immediately:
-        [ACTION] Recovery suppressed · {merchant}
+> Per explicit user direction, this landed in `app/admin/live-transaction/page.tsx` (live scan stream), **not** `TransactionSimulations.tsx`. That file was left untouched.
+
+- [x] Add [ACTION] event level to the live scan stream. Color: cyan (`#22d3ee`); same timestamp · level badge · message · sub-label row structure.
+- [x] After each `SCAN SUMMARY` ALERT for a FAILED AGENT checkout, inject one ACTION row:
         [ACTION] Case escalated for human review · {caseId}
-- [ ] After an auto-notification fires (autoNotified: true on the incident), inject:
+      HUMAN failures inject no escalation row. (Recovery suppressed row/injection removed from the UI per user request 2026-11-09; `RECOVERY_SUPPRESSED` DB records remain.)
+- [x] After an auto-notification fires (`autoNotified: true` for the transaction merchant from `GET /api/admin/incidents`), inject:
         [ACTION] Merchant notified automatically · {merchant}
         sub: ✉ Sent to raox58@gmail.com · {incidentType}
-- [ ] ACTION rows appear inline at the moment the action is taken, not batched at the end of the run.
+      Deduped per `incidentId` for the page session via a `Set`.
+- [x] ACTION rows appear inline at the moment the action is taken, not batched at the end of the run.
+
+### M13-O runtime verification note — 2026-11-09 (local)
+
+- Owner session on the dev server; latest capture scanned on `/admin/live-transaction`.
+- HUMAN failed capture: ALERT emitted, **no** suppression/escalation ACTION rows; one `Merchant notified automatically · Northstar Goods` ACTION row (`✉ Sent to raox58@gmail.com · FAILURE_SPIKE`) because the incident was `autoNotified: true`.
+- AGENT failed capture (`processor_decline`, Northstar): ALERT then `Case escalated for human review · CASE-61044A29` (sub: `Requires merchant action`). The auto-notification row was **not** re-injected — session dedupe worked.
+- Recovery suppressed display/injection removed from the live scan stream and both agent-action panels (2026-11-09); `RECOVERY_SUPPRESSED` records remain in `AgentActionLog`. Runtime check: live scan shows only the Case escalated ACTION row, and both panels render 10 Case escalated rows with 0 recovery rows.
+- ACTION badge computed color `rgb(34, 211, 238)` (cyan).
+- New full-width **Recent agent actions** panel: dark `rgb(17, 18, 20)` surface (matches live scan stream), fixed `220px` body, scrollable, types tagged muted-yellow / amber / cyan / gray, relative times (`just now`, `13 min ago`), and age styling confirmed (`just now` → cyan 2px left border + opacity 1; older → opacity 0.6, transparent border).
 ---
  
 ## M13A: Cross-merchant pattern detection (new; this is the "Network" signal) — NOT STARTED
@@ -343,7 +366,54 @@ M6 detects spikes per merchant. This milestone detects patterns across merchants
 - [ ] After seed, graph shows baseline -> spike -> incident marker -> recovery for the chosen merchant.
 - [ ] Removing seed data empties the graph without errors.
 ---
- 
+
+## M18: AG Studio embedded analytics dashboard
+
+> Implementation owned by teammate. A placeholder 
+> page exists at /admin/network under the existing 
+> network page. AG Studio will replace the static 
+> panels with an embedded self-serve dashboard.
+
+- [ ] Obtain AG Studio 45-day trial license from 
+      https://www.ag-grid.com/studio/license-pricing/
+- [ ] Install AG Studio React package and configure 
+      license key in environment variables
+- [ ] Create a flat JSON data endpoint 
+      GET /api/admin/studio-data that returns payment 
+      events, incidents, agent actions, and merchant 
+      health as a single denormalized array suitable 
+      for AG Studio's data engine
+- [ ] Replace the network heatmap section on 
+      /admin/network with AG Studio embedded dashboard 
+      component
+- [ ] Pre-build these widgets inside Studio:
+        • Failure rate by merchant (bar chart)
+        • Payment events over time 48h (line chart)
+        • Incident count by type (donut)
+        • Agent actions timeline
+        • Checkout origin breakdown HUMAN/AGENT/UNKNOWN
+        • Merchant health heatmap
+- [ ] Integrate Studio Agent Framework: chat input 
+      on the network page, natural language → widget 
+      generation. Example queries:
+        "Show me only carding pattern incidents"
+        "Compare Field & Form vs Northstar failures"
+        "Which hour had the most failures today?"
+- [ ] Theme Studio to match PayProof design system 
+      (dark background, orange accent, existing 
+      typography)
+- [ ] Cross-filtering: clicking a merchant in one 
+      widget filters all other widgets
+
+Relevant paths:
+- app/admin/network/page.tsx — host component
+- app/api/admin/studio-data/route.ts — flat data 
+  endpoint for Studio
+- Space reserved in network page layout between 
+  Active Incidents and Agent Actions sections
+
+---
+
 ## Remaining release checks
  
 - [ ] Confirm target database, then apply pending migrations in order (diagnosis, new event columns, channels, incident records, inventory removal last).

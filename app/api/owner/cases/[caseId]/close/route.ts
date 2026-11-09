@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
+import { verifyRequestOrigin } from "@/lib/auth";
+import { getCaseAccess } from "@/lib/case-access";
 import { getDatabase } from "@/db/client";
 import { closeMemoryCase } from "@/lib/demo-store";
 import { hasSavedCustomerReplyDraft } from "@/lib/case-assistant";
@@ -8,9 +9,11 @@ type Context = { params: Promise<{ caseId: string }> };
 
 export async function POST(request: Request, { params }: Context) {
   if (!verifyRequestOrigin(request)) return NextResponse.json({ error: "Request origin was not accepted." }, { status: 403 });
-  if (!await hasOwnerSession()) return NextResponse.json({ error: "Owner sign-in is required." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   const { caseId } = await params;
   try {
+    const access = await getCaseAccess(caseId);
+    if (!access) return NextResponse.json({ error: "Sign-in is required for this case." }, { status: 401, headers: { "Cache-Control": "no-store" } });
+    if (!access.owner) return NextResponse.json({ error: "Only PayProof admin can close a case review." }, { status: 403, headers: { "Cache-Control": "no-store" } });
     if (!await hasSavedCustomerReplyDraft(caseId)) return NextResponse.json({ error: "Save a customer reply draft before closing this review." }, { status: 409 });
     const db = getDatabase();
     if (!db) {

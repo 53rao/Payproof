@@ -42,9 +42,9 @@ export async function GET() {
       const failedOrders = orders.filter((o) => o.status === "FAILED").length;
       const failureRate = totalOrders > 0 ? Math.round((failedOrders / totalOrders) * 100) : 0;
 
-      const openCases = await db.case.findMany({
+      const merchantCases = await db.case.findMany({
         where: {
-          status: "OPEN",
+          NOT: { status: "CLOSED" },
           order: { items: { some: { productId: { in: ownedProductIds } } } },
         },
         include: {
@@ -53,9 +53,10 @@ export async function GET() {
           },
         },
         orderBy: { createdAt: "desc" },
+        take: 20,
       });
 
-      const formattedCases = openCases.map((c) => {
+      const formattedCases = merchantCases.map((c) => {
         const item = c.order.items.find((i) => ownedProductIds.includes(i.productId)) ?? c.order.items[0];
         const productName = item?.product.name ?? "Store item";
         const needsAction = c.type === "PAYMENT_FAILURE" && c.order.checkoutOrigin === "HUMAN";
@@ -116,14 +117,17 @@ export async function GET() {
     const failedOrders = orders.filter((o) => o.status === "FAILED").length;
     const failureRate = totalOrders > 0 ? Math.round((failedOrders / totalOrders) * 100) : 0;
 
-    const openCases = state.cases
-      .filter((c) => c.status === "OPEN")
+    const merchantCases = state.cases
+      .filter((c) => c.status !== "CLOSED")
       .filter((c) => {
         const order = state.orders.find((o) => o.id === c.orderId);
         return order && order.items.some((i) => ownedProductIds.includes(i.id));
-      });
+      })
+      .slice()
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+      .slice(0, 20);
 
-    const formattedCases = openCases.map((c) => {
+    const formattedCases = merchantCases.map((c) => {
       const order = state.orders.find((o) => o.id === c.orderId);
       const item = order?.items.find((i) => ownedProductIds.includes(i.id)) ?? order?.items[0];
       const product = catalogProducts.find((p) => p.id === item?.id);

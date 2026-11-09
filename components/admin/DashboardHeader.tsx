@@ -1,19 +1,14 @@
 "use client";
 import Link from "next/link";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { DemoState } from "./types";
-import { money } from "./format";
-import { Icon } from "./Icon";
+import { usePathname } from "next/navigation";
+import { memo, useCallback, useEffect, useState } from "react";
 
-export const DashboardHeader = memo(function DashboardHeader({ data, onSignOut }: { data: DemoState | null; onSignOut: () => void }) {
-  const [query, setQuery] = useState("");
+export const DashboardHeader = memo(function DashboardHeader({ onSignOut }: { onSignOut: () => void }) {
+  const pathname = usePathname();
+  const isMerchantDesk = pathname === "/admin";
+  const isNetworkHealth = pathname === "/admin/network" || pathname === "/admin/live-transaction";
+  const isCases = pathname === "/admin/cases";
   const [incidentCount, setIncidentCount] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const onShortcut = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); inputRef.current?.focus(); } };
-    window.addEventListener("keydown", onShortcut); return () => window.removeEventListener("keydown", onShortcut);
-  }, []);
 
   const refreshIncidents = useCallback(async () => {
     try {
@@ -34,12 +29,5 @@ export const DashboardHeader = memo(function DashboardHeader({ data, onSignOut }
     return () => window.clearInterval(timer);
   }, [refreshIncidents]);
 
-  const results = useMemo(() => {
-    const term = query.trim().toLowerCase(); if (!term || !data) return [];
-    const orders = data.orders.filter((order) => `${order.id} ${order.status} ${order.issue ?? ""} ${order.amount}`.toLowerCase().includes(term)).map((order) => ({ kind: "Order", id: order.id, detail: `${order.status} · ${money(order.amount)}`, href: "#orders", caseId: "" }));
-    const cases = data.cases.filter((item) => `${item.id} ${item.orderId} ${item.issue}`.toLowerCase().includes(term)).map((item) => ({ kind: "Case", id: item.id, detail: `${item.orderId} · ${item.issue.replaceAll("_", " ")}`, href: `/owner/cases?caseId=${encodeURIComponent(item.id)}` }));
-    return [...orders, ...cases].slice(0, 6);
-  }, [data, query]);
-
-  return <header className="pp-topbar"><div className="pp-brand-line"><Link href="/" className="pp-wordmark">PayProof</Link><span className="pp-divider"/><span className="pp-workspace-select">Merchant Desk</span><span className="pp-divider"/><Link href="/admin/network" className="pp-nav-link pp-network-link">Network Health{incidentCount > 0 && <span className="pp-nav-dot" aria-label={`${incidentCount} active incidents`}>{incidentCount >= 10 ? "9+" : incidentCount}</span>}</Link></div><div className="pp-top-actions"><div className="pp-search-wrap"><label className="pp-search"><Icon name="search"/><input ref={inputRef} type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search orders or cases…" aria-label="Search orders and cases"/></label>{query.trim() && <div className="pp-search-results">{results.length ? results.map((result) => <a key={`${result.kind}-${result.id}`} href={result.href} className="pp-search-result" onClick={() => setQuery("")}><span>{result.kind}</span><b>{result.id}</b><small>{result.detail}</small></a>) : <p>No matching orders or cases found.</p>}</div>}</div><button type="button" className="pp-signout" onClick={onSignOut}>Sign out</button><span className="pp-user">S</span></div></header>;
+  return <header className="pp-topbar"><div className="pp-brand-line"><Link href="/" className="pp-wordmark">PayProof</Link><span className="pp-divider"/><Link href="/admin" className={`pp-nav-link${isMerchantDesk ? " is-active" : ""}`} aria-current={isMerchantDesk ? "page" : undefined}>Merchant Desk</Link><span className="pp-divider"/><Link href="/admin/network" className={`pp-nav-link pp-network-link${isNetworkHealth ? " is-active" : ""}`} aria-current={isNetworkHealth ? "page" : undefined}>Network Health{incidentCount > 0 && <span className="pp-nav-dot" aria-label={`${incidentCount} active incidents`}>{incidentCount >= 10 ? "9+" : incidentCount}</span>}</Link><span className="pp-divider"/><Link href="/admin/cases" className={`pp-nav-link${isCases ? " is-active" : ""}`} aria-current={isCases ? "page" : undefined}>Cases</Link></div><div className="pp-top-actions"><button type="button" className="pp-signout" onClick={onSignOut}>Sign out</button><span className="pp-user">S</span></div></header>;
 });

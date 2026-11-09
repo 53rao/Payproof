@@ -10,8 +10,8 @@ import { MerchantAnalytics } from "@/components/admin/MerchantAnalytics";
 import { TransactionSimulations } from "@/components/admin/TransactionSimulations";
 import { PaymentEvents } from "@/components/admin/PaymentEvents";
 import { OrderManagement } from "@/components/admin/OrderManagement";
-import { Icon } from "@/components/admin/Icon";
 import { AgentActions } from "@/components/admin/AgentActions";
+import { Icon } from "@/components/admin/Icon";
 import "./admin.css";
 
 gsap.registerPlugin(useGSAP);
@@ -59,14 +59,15 @@ export default function AdminPage() {
   }, []);
 
   return <main ref={rootRef} className="pp-shell pp-merchant-desk-shell">
-    <SectionRail data={data}/>
+    <SectionRail/>
     <div className="pp-app">
-      <DashboardHeader data={data} onSignOut={signOut}/>
-      <div className="pp-workspace">
+      <DashboardHeader onSignOut={signOut}/>
+      <div className="pp-workspace pp-desk-workspace">
         <div className="pp-content">
+          <div id="overview" className="pp-rail-anchor" aria-hidden="true"/>
           <NeedsAttentionStrip />
           {error && <div className="pp-error" role="alert">{error}</div>}
-          <PaymentEvents data={data} failedRate={failedRate} failedOrders={failedOrders} totalOrders={totalOrders}/>
+          <PaymentEvents data={data} loading={loading} failedRate={failedRate} failedOrders={failedOrders} totalOrders={totalOrders}/>
           <OrderManagement data={data} loading={loading} totalOrders={totalOrders}/>
           <section className="pp-screen pp-demo-tools" aria-labelledby="pp-demo-tools-title">
             <div className="pp-hero"><div className="pp-title"><h1 id="pp-demo-tools-title">Demo Tools</h1><p>Sandbox testing controls — not visible to merchants.</p></div></div>

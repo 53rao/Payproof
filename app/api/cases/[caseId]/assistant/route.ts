@@ -1,17 +1,18 @@
 import { NextResponse } from "next/server";
-import { hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
+import { verifyRequestOrigin } from "@/lib/auth";
+import { getCaseAccess } from "@/lib/case-access";
 import { draftCustomerReply, draftMerchantResponse, explainCase, getCaseSnapshot, isDraftKind } from "@/lib/case-assistant";
 
 type Context = { params: Promise<{ caseId: string }> };
 
 export async function POST(request: Request, { params }: Context) {
   if (!verifyRequestOrigin(request)) return NextResponse.json({ error: "Request origin was not accepted." }, { status: 403 });
-  if (!await hasOwnerSession()) return NextResponse.json({ error: "Owner sign-in is required." }, { status: 401 });
   if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) return NextResponse.json({ error: "Send the assistant request as JSON." }, { status: 415 });
   if (Number(request.headers.get("content-length") ?? 0) > 2_048) return NextResponse.json({ error: "The assistant request is too large." }, { status: 413 });
 
   try {
     const { caseId } = await params;
+    if (!await getCaseAccess(caseId)) return NextResponse.json({ error: "Sign-in is required for this case." }, { status: 401 });
     const body: unknown = await request.json();
     if (!body || typeof body !== "object") return NextResponse.json({ error: "Choose an assistant action." }, { status: 400 });
     const action = (body as Record<string, unknown>).action;

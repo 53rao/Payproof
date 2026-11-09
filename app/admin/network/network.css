@@ -68,3 +68,540 @@
 @media (max-width: 560px) {
   .pp-network-live-link-row { align-items: flex-start; flex-direction: column; }
 }
+
+/* ---------------------------------------------------- */
+/* Network insight panels                              */
+/* ---------------------------------------------------- */
+.pp-insight-panel {
+  margin-top: 20px;
+}
+
+.pp-insight-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  padding: 3px 9px;
+  border: 1px solid #e2e6e9;
+  border-radius: 999px;
+  color: #8a939d;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+
+.pp-insight-error {
+  margin: 14px 0 0;
+  color: #a3322c;
+  font-size: 12px;
+}
+
+.pp-insight-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.pp-insight-body.is-origins { min-height: 134px; }
+.pp-insight-body.is-commerce { min-height: 332px; }
+.pp-insight-body.is-pressure { min-height: 298px; }
+.pp-insight-body > .pp-insight-empty { margin: auto 0; }
+
+/* Modern buffering state (compact) */
+.pp-network-buffer {
+  display: flex;
+  height: 100%;
+  min-height: 220px;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 22px 16px;
+  text-align: center;
+}
+
+.pp-network-buffer .pp-agent-glow-orb {
+  width: 56px;
+  height: 56px;
+  margin-bottom: 16px;
+}
+
+.pp-network-buffer .pp-agent-hover-heading {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.pp-network-buffer .pp-agent-shimmer-sub {
+  max-width: 420px;
+  margin: 0 auto 16px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pp-network-buffer .pp-agent-steps-pill {
+  padding: 7px 14px;
+  font-size: 11px;
+}
+
+/* Skeleton placeholders while insight panels load */
+.pp-origin-skeleton .pp-skeleton-line { height: 10px; }
+.pp-origin-skeleton .pp-origin-tile > .pp-skeleton:nth-child(2) { align-self: start; }
+.pp-origin-skeleton-bar {
+  height: 10px;
+  border-radius: 999px;
+}
+.pp-commerce-skeleton .pp-insight-table td .pp-skeleton { margin: 2px 0; }
+.pp-pressure-skeleton .pp-pressure-row .pp-skeleton { align-self: center; }
+
+
+.pp-insight-empty-block {
+  padding: 8px 0 2px;
+}
+
+.pp-insight-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 30px 16px;
+  color: #7a8692;
+  font-size: 12px;
+  text-align: center;
+}
+
+.pp-insight-empty-block .pp-insight-empty {
+  padding-bottom: 8px;
+}
+
+.pp-insight-empty-copy {
+  max-width: 64ch;
+  margin: 0 auto;
+  color: #8a939d;
+  font-size: 11px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+/* Checkout origin breakdown */
+.pp-origin-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: 24px;
+  margin-top: 18px;
+}
+
+.pp-origin-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pp-origin-tile {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 12px 13px;
+  border: 1px solid #e6e1d8;
+  border-radius: 10px;
+  background: #fcfbf8;
+}
+
+.pp-origin-tile-label {
+  color: #6b7582;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.pp-origin-tile b {
+  color: #17243b;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.pp-origin-tile small {
+  color: #7a8692;
+  font-size: 10px;
+}
+
+.pp-origin-tile.is-active {
+  border-color: rgba(239, 77, 26, 0.4);
+  background: #fff3ee;
+}
+
+.pp-origin-tile.is-active b {
+  color: var(--pp-orange);
+}
+
+.pp-origin-bars {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  max-height: 150px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.pp-origin-bar-row {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.pp-origin-merchant {
+  overflow: hidden;
+  color: #4e5b69;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pp-origin-bar {
+  display: flex;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eef0f2;
+}
+
+.pp-origin-bar i {
+  display: block;
+  height: 100%;
+}
+
+.pp-origin-bar .is-human {
+  background: #7f9cc9;
+}
+
+.pp-origin-bar .is-agent {
+  background: var(--pp-orange);
+}
+
+.pp-origin-bar .is-unknown {
+  background: #a7afb8;
+}
+
+/* Stat tiles and tables */
+.pp-stat-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.pp-stat-tile {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  min-height: 74px;
+  padding: 12px 13px;
+  border: 1px solid #e6e1d8;
+  border-radius: 10px;
+  background: #fcfbf8;
+}
+
+.pp-stat-tile span {
+  color: #6b7582;
+  font-size: 9.5px;
+  line-height: 1.35;
+}
+
+.pp-stat-tile b {
+  color: #17243b;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.pp-stat-tile b.is-red {
+  color: #c8493e;
+}
+
+.pp-insight-table-wrap {
+  margin-top: 16px;
+  max-height: 222px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.pp-insight-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+}
+
+.pp-insight-table th,
+.pp-insight-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #eee9e1;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.pp-insight-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #ffffff;
+  box-shadow: inset 0 -1px 0 #eee9e1;
+  color: #7a8692;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pp-insight-table tbody th {
+  color: #17243b;
+  font-weight: 600;
+}
+
+.pp-insight-table tbody td {
+  color: #4e5b69;
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-insight-table tbody tr:last-child th,
+.pp-insight-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.pp-insight-table .is-red {
+  color: #c8493e;
+}
+
+.pp-insight-table .is-amber {
+  color: #b8770f;
+}
+
+.pp-insight-table .is-green {
+  color: #13834e;
+}
+
+/* Case resolution pressure */
+.pp-pressure-total {
+  margin: 16px 0 0;
+  color: #5e6877;
+  font-size: 12px;
+}
+
+.pp-pressure-total b {
+  margin-right: 2px;
+  color: #17243b;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pp-pressure-list {
+  display: grid;
+  max-height: 246px;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.pp-pressure-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.4fr) 110px 130px minmax(140px, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  border-bottom: 1px solid #eee9e1;
+}
+
+.pp-pressure-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #ffffff;
+  min-height: 30px;
+  border-bottom-color: #e6e1d8;
+  color: #7a8692;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pp-pressure-row:last-child {
+  border-bottom: none;
+}
+
+.pp-pressure-merchant {
+  color: #17243b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pp-case-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.pp-case-pill.is-red {
+  background: #fbe9e7;
+  color: #a3322c;
+}
+
+.pp-case-pill.is-amber {
+  background: #fdf1dd;
+  color: #8a5a00;
+}
+
+.pp-case-pill.is-green {
+  background: #e8f4ed;
+  color: #1c633c;
+}
+
+.pp-case-age {
+  font-size: 11px;
+}
+
+.pp-case-age.is-red {
+  color: #c8493e;
+}
+
+.pp-case-age.is-amber {
+  color: #b8770f;
+}
+
+.pp-case-age.is-muted {
+  color: #7a8692;
+}
+
+.pp-pressure-human {
+  color: #4e5b69;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* AG Studio placeholder */
+.pp-studio-placeholder {
+  position: relative;
+  box-sizing: border-box;
+  height: 120px;
+  margin-top: 20px;
+  overflow: hidden;
+  padding: 16px 20px;
+  border: 1px dashed rgba(255, 255, 255, 0.32);
+  border-radius: 14px;
+  background: #17243b;
+  color: #e6eaf0;
+}
+
+.pp-studio-placeholder h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.pp-studio-sub {
+  margin: 3px 0 0;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.pp-studio-copy {
+  max-width: 92ch;
+  margin: 9px 0 0;
+  color: #c3ccd8;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.pp-insight-badge.pp-studio-badge {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #94a3b8;
+}
+
+/* Fixed-size diagnosis panel with internal scroll */
+.pp-latest-diagnosis {
+  display: flex;
+  height: 480px;
+  flex-direction: column;
+}
+
+.pp-latest-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+}
+
+.pp-latest-body.is-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.pp-latest-body .pp-latest-finding {
+  margin-top: 14px;
+}
+
+/* Merchant health and agent action lists keep a fixed frame */
+.pp-merchant-health-list {
+  max-height: 268px;
+  min-height: 200px;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: thin;
+}
+
+.pp-merchant-health-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #17243b;
+}
+
+.pp-merchant-health-list.is-loading .pp-skeleton {
+  height: 10px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.07) 25%, rgba(255, 255, 255, 0.18) 37%, rgba(255, 255, 255, 0.07) 63%);
+  background-size: 400% 100%;
+}
+
+.pp-merchant-health-skeleton .pp-skeleton-badge {
+  height: 20px;
+  border-radius: 999px;
+}
+
+.pp-agent-actions-panel .pp-agent-actions-list {
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px;
+  scrollbar-width: thin;
+}
+
+@media (max-width: 900px) {
+  .pp-origin-layout { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .pp-stat-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pp-insight-body.is-origins { min-height: 241px; }
+  .pp-latest-diagnosis { height: 540px; }
+}
+
+@media (max-width: 640px) {
+  .pp-origin-tiles { grid-template-columns: minmax(0, 1fr); }
+  .pp-pressure-row { grid-template-columns: minmax(100px, 1.2fr) 74px 92px minmax(90px, 1fr); gap: 8px; }
+  .pp-pressure-head { font-size: 8px; }
+  .pp-studio-placeholder { height: auto; min-height: 120px; }
+  .pp-latest-diagnosis { height: 580px; }
+}

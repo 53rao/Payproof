@@ -8,10 +8,9 @@ type AgentAction = { createdAt: string };
 
 const DISMISS_KEY = "payproof-admin-attention-dismissed";
 
-function startOfToday() {
+function startOfTodayUtc() {
   const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
 }
 
 export function NeedsAttentionStrip() {
@@ -61,7 +60,7 @@ export function NeedsAttentionStrip() {
   }, [refresh]);
 
   const actionsToday = useMemo(() => {
-    const start = startOfToday();
+    const start = startOfTodayUtc();
     return actions.filter((a) => new Date(a.createdAt).getTime() >= start).length;
   }, [actions]);
 
@@ -87,11 +86,17 @@ export function NeedsAttentionStrip() {
           {diagnosis.createdAt && <time dateTime={diagnosis.createdAt}>{new Date(diagnosis.createdAt).toLocaleString()}</time>}
         </Link>
       )}
-      <Link href="/admin/network" className="pp-attention-item">
-        <span className="pp-attention-label">{actionsToday} agent action{actionsToday === 1 ? "" : "s"} recorded today</span>
+      <Link href="/admin/network" className={`pp-attention-item pp-attention-actions${actionsToday === 0 ? " is-muted" : ""}`}>
+        <span className="pp-attention-label">
+          {actionsToday === 0
+            ? "No agent actions recorded today"
+            : `${actionsToday} agent action${actionsToday === 1 ? "" : "s"} recorded today`}
+        </span>
       </Link>
-      <Link href="/admin/network" className="pp-attention-cta">Review network health</Link>
-      <button type="button" className="pp-attention-dismiss" onClick={dismiss} aria-label="Dismiss for this session">×</button>
+      <div className="pp-attention-controls">
+        <Link href="/admin/network" className="pp-attention-cta">Review network health</Link>
+        <button type="button" className="pp-attention-dismiss" onClick={dismiss} aria-label="Dismiss for this session">×</button>
+      </div>
     </section>
   );
 }

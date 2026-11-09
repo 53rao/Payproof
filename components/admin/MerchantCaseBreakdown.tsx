@@ -5,6 +5,7 @@ type MerchantCases = { id: string; name: string; openCases: number; casesNeeding
 
 export function MerchantCaseBreakdown() {
   const [merchants, setMerchants] = useState<MerchantCases[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -17,6 +18,8 @@ export function MerchantCaseBreakdown() {
         if (active) { setMerchants(body.merchants ?? []); setError(""); }
       } catch (cause) {
         if (active) setError(cause instanceof Error ? cause.message : "Merchant case counts could not be loaded.");
+      } finally {
+        if (active) setLoading(false);
       }
     };
     void refresh();
@@ -27,9 +30,17 @@ export function MerchantCaseBreakdown() {
   }, []);
 
   if (error) return <p className="pp-assist-error" role="alert">{error}</p>;
+  if (loading && !merchants.length) return <div className="pp-assist-case-breakdown pp-assist-case-loading" role="status" aria-label="Loading case activity">
+    {[0, 1, 2, 3, 4].map((row) => <div className="pp-assist-merchant pp-assist-merchant-skeleton" key={row}>
+      <span className="pp-skeleton pp-skeleton-line" style={{ width: "46%" }}/>
+      <span className="pp-skeleton pp-skeleton-line" style={{ width: "76%" }}/>
+      <span className="pp-skeleton pp-skeleton-line" style={{ width: "64%" }}/>
+      <span className="pp-skeleton pp-skeleton-line" style={{ width: "32%" }}/>
+    </div>)}
+  </div>;
   return <div className="pp-assist-case-breakdown" aria-live="polite">
     {merchants.map((merchant) => <div className="pp-assist-merchant" key={merchant.id}>
-      <a href={`/owner/cases?merchantId=${encodeURIComponent(merchant.id)}`}>{merchant.name}</a>
+      <a href={`/admin/cases?merchantId=${encodeURIComponent(merchant.id)}`}>{merchant.name}</a>
       <span>Total open cases: {merchant.openCases ?? 0}</span>
       <span>Open human payment failures requiring merchant review: {merchant.casesNeedingAction ?? 0}</span>
       <b>{merchant.casesNeedingAction ?? 0} need action</b>

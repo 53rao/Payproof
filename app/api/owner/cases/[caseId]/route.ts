@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
+import { verifyRequestOrigin } from "@/lib/auth";
+import { getCaseAccess } from "@/lib/case-access";
 import { getDatabase } from "@/db/client";
 import { getOwnerCase } from "@/lib/customer-case-store";
 import { getCaseSnapshot, hasSavedCustomerReplyDraft } from "@/lib/case-assistant";
@@ -7,9 +8,9 @@ import { containsProhibitedPaymentData } from "@/lib/privacy";
 
 type Context = { params: Promise<{ caseId: string }> };
 export async function GET(_request: Request, { params }: Context) {
-  if (!await hasOwnerSession()) return NextResponse.json({ error: "Owner sign-in is required." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   try {
     const { caseId } = await params;
+    if (!await getCaseAccess(caseId)) return NextResponse.json({ error: "Sign-in is required for this case." }, { status: 401, headers: { "Cache-Control": "no-store" } });
     const [record, snapshot] = await Promise.all([getOwnerCase(caseId), getCaseSnapshot(caseId)]);
     if (!record || !snapshot) return NextResponse.json({ error: "Case not found." }, { status: 404, headers: { "Cache-Control": "no-store" } });
     const canCloseReview = await hasSavedCustomerReplyDraft(caseId);
@@ -19,11 +20,11 @@ export async function GET(_request: Request, { params }: Context) {
 
 export async function PATCH(request: Request, { params }: Context) {
   if (!verifyRequestOrigin(request)) return NextResponse.json({ error: "Request origin was not accepted." }, { status: 403 });
-  if (!await hasOwnerSession()) return NextResponse.json({ error: "Owner sign-in is required." }, { status: 401, headers: { "Cache-Control": "no-store" } });
   if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) return NextResponse.json({ error: "Send the report as JSON." }, { status: 415 });
   if (Number(request.headers.get("content-length") ?? 0) > 20_000) return NextResponse.json({ error: "The report request is too large." }, { status: 413 });
   try {
     const { caseId } = await params;
+    if (!await getCaseAccess(caseId)) return NextResponse.json({ error: "Sign-in is required for this case." }, { status: 401, headers: { "Cache-Control": "no-store" } });
     const body: unknown = await request.json();
     if (!body || typeof body !== "object" || typeof (body as { report?: unknown }).report !== "string") return NextResponse.json({ error: "Enter a report draft." }, { status: 400 });
     const report = (body as { report: string }).report;

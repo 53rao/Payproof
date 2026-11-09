@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
-import { hasOwnerSession, verifyRequestOrigin } from "@/lib/auth";
+import { verifyRequestOrigin } from "@/lib/auth";
+import { getCaseAccess } from "@/lib/case-access";
 import { markCustomerReplyDraftSaved, updateDraft } from "@/lib/case-assistant";
 
 type Context = { params: Promise<{ caseId: string; draftId: string }> };
 
 export async function PATCH(request: Request, { params }: Context) {
   if (!verifyRequestOrigin(request)) return NextResponse.json({ error: "Request origin was not accepted." }, { status: 403 });
-  if (!await hasOwnerSession()) return NextResponse.json({ error: "Owner sign-in is required." }, { status: 401 });
   if (!request.headers.get("content-type")?.toLowerCase().includes("application/json")) return NextResponse.json({ error: "Send the edited reply as JSON." }, { status: 415 });
   try {
     const { caseId, draftId } = await params;
+    if (!await getCaseAccess(caseId)) return NextResponse.json({ error: "Sign-in is required for this case." }, { status: 401 });
     const body: unknown = await request.json();
     if (!body || typeof body !== "object" || typeof (body as { body?: unknown }).body !== "string" || (body as { body: string }).body.length > 2_000) return NextResponse.json({ error: "Reply text must be no more than 2,000 characters." }, { status: 400 });
     const result = await updateDraft(caseId, draftId, (body as { body: string }).body);

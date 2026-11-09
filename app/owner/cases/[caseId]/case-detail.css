@@ -122,3 +122,16 @@
 .pp-case-modal-heading-row{display:flex;align-items:center;gap:12px;min-width:0}.pp-case-modal-heading-row h1{min-width:0}.pp-case-close-review-circle{display:grid;place-items:center;flex:none;width:34px;height:34px;padding:0;border:1px solid #ef4d1a;border-radius:50%;background:#ef4d1a;color:#fff;cursor:pointer}.pp-case-close-review-circle svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.pp-case-close-review-circle:hover:not(:disabled){border-color:#cf3b12;background:#cf3b12}.pp-case-close-review-circle:disabled{border-color:#d5d0c6;background:#e8e3d9;color:#626c79;cursor:not-allowed}.pp-case-workspace-modal .pp-case-modal-body>.pp-case-winback{margin:12px 0 0}
 .pp-case-workspace-modal .pp-assistant-workspace,.pp-case-workspace-modal .pp-assistant-workspace.has-evidence{column-gap:14px;row-gap:14px}.pp-case-workspace-modal .pp-case-modal-body{padding-top:6px}@media(max-width:760px){.pp-case-workspace-modal .pp-case-modal-body{padding-top:7px}}
 .pp-case-workspace-modal .pp-case-modal-body>details.pp-case-winback,.pp-case-workspace-modal .pp-case-modal-body>details.pp-case-context,.pp-case-workspace-modal .pp-case-modal-body>details.pp-case-response{display:block!important;width:100%!important;max-width:100%!important;min-width:0;box-sizing:border-box;align-self:stretch;margin-left:0!important;margin-right:0!important;padding-left:16px;padding-right:16px;border-radius:10px}
+
+/* Case review layout without the assistant chat */
+.pp-case-review-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,.85fr);gap:14px;align-items:start}
+.pp-case-review-main,.pp-case-review-side{display:grid;gap:14px;min-width:0}
+.pp-case-workspace-modal .pp-case-review-main .pp-evidence-panel{height:auto;max-height:min(44dvh,430px);min-height:300px}
+.pp-case-workspace-modal .pp-case-draft-card{margin:0;padding:18px 20px}
+.pp-case-draft-head-actions{display:flex;flex:none;align-items:center;gap:8px}
+.pp-case-draft-head-actions .pp-case-draft-badge{white-space:nowrap}
+.pp-case-draft-head-actions .pp-case-primary-button{min-height:32px;padding:0 11px;font-size:10px}
+.pp-case-draft-empty{margin:0;color:#596475;font-size:12px;line-height:1.55}
+.pp-case-review-side>details{width:100%;box-sizing:border-box;margin:0;padding-left:16px;padding-right:16px;border-radius:10px}
+.pp-case-workspace-modal .pp-case-review-side .pp-case-winback{margin:0}
+@media(max-width:760px){.pp-case-review-grid{grid-template-columns:minmax(0,1fr);gap:12px}.pp-case-workspace-modal .pp-case-review-main .pp-evidence-panel{max-height:min(50dvh,460px)}.pp-case-draft-head-actions{align-items:flex-end;flex-direction:column}}
