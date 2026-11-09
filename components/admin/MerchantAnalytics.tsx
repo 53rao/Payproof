@@ -38,7 +38,10 @@ export function MerchantAnalytics() {
   const overlappingEvents = uniqueEvents === null ? null : Math.max(0, attributedEvents - uniqueEvents);
 
   return <section className="pp-merchant-analytics" aria-labelledby="pp-merchant-analytics-title">
-    <header><div><h2 id="pp-merchant-analytics-title">Merchant Analytics</h2><p>Attributed payment outcomes across connected merchants.</p></div></header>
+    <header>
+      <div><h2 id="pp-merchant-analytics-title">Merchant Analytics</h2><p>Attributed payment outcomes across connected merchants.</p></div>
+      {!loading && !error && <span className="pp-merchant-analytics-summary">{merchants.length} merchants · {uniqueEvents ?? attributedEvents} unique events</span>}
+    </header>
     {error ? <p role="alert">{error}</p> : loading && !merchants.length ? <MerchantAnalyticsSkeleton/> : <>
       <div className="pp-merchant-analytics-table" role="table" aria-label="Merchant analytics">
         <div className="pp-merchant-analytics-row pp-merchant-analytics-head" role="row"><span role="columnheader">Merchant</span><span role="columnheader">Events*</span><span role="columnheader">Failed</span><span role="columnheader">Recovered sales</span><span role="columnheader">Health</span></div>

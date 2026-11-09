@@ -11,8 +11,12 @@ import { TransactionSimulations } from "@/components/admin/TransactionSimulation
 import { PaymentEvents } from "@/components/admin/PaymentEvents";
 import { OrderManagement } from "@/components/admin/OrderManagement";
 import { AgentActions } from "@/components/admin/AgentActions";
+import { PaymentLedgerGrid, type ActivityOrder } from "@/components/admin/PaymentLedgerGrid";
+import { AdminAnalyticsStudio } from "@/components/admin/AdminAnalyticsStudio";
+import { CheckoutDiagnostics } from "@/components/admin/CheckoutDiagnostics";
 import { Icon } from "@/components/admin/Icon";
 import "./admin.css";
+import "./admin-redesign.css";
 
 gsap.registerPlugin(useGSAP);
 
@@ -22,17 +26,31 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState("");
+  const [activity, setActivity] = useState<ActivityOrder[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
+  const [activityError, setActivityError] = useState("");
   const { contextSafe } = useGSAP({ scope: rootRef });
 
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/demo/state", { cache: "no-store" });
-      if (response.status === 401) { window.location.replace("/login?next=%2Fadmin"); return; }
+      const [response, activityResponse] = await Promise.all([
+        fetch("/api/demo/state", { cache: "no-store" }),
+        fetch("/api/admin/activity", { cache: "no-store" }),
+      ]);
+      if (response.status === 401 || activityResponse.status === 401) { window.location.replace("/login?next=%2Fadmin"); return; }
       if (!response.ok) throw new Error("Could not load the demo ledger.");
       setData(await response.json() as DemoState);
       setError("");
+      if (activityResponse.ok) {
+        const body = await activityResponse.json() as { orders?: ActivityOrder[] };
+        setActivity(Array.isArray(body.orders) ? body.orders : []);
+        setActivityError("");
+      } else {
+        const body = await activityResponse.json().catch(() => null) as { error?: string } | null;
+        setActivityError(body?.error ?? "Could not load payment activity.");
+      }
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load the demo ledger."); }
-    finally { setLoading(false); }
+    finally { setLoading(false); setActivityLoading(false); }
   }, []);
   useEffect(() => { void refresh(); }, [refresh]);
   useEffect(() => {
@@ -58,7 +76,7 @@ export default function AdminPage() {
     window.location.replace("/login");
   }, []);
 
-  return <main ref={rootRef} className="pp-shell pp-merchant-desk-shell">
+  return <main ref={rootRef} className="pp-shell pp-merchant-desk-shell pp-admin-redesign">
     <SectionRail/>
     <div className="pp-app">
       <DashboardHeader onSignOut={signOut}/>
@@ -67,10 +85,26 @@ export default function AdminPage() {
           <div id="overview" className="pp-rail-anchor" aria-hidden="true"/>
           <NeedsAttentionStrip />
           {error && <div className="pp-error" role="alert">{error}</div>}
+          <section className="pp-admin-intro" aria-labelledby="pp-admin-title">
+            <div>
+              <h1 id="pp-admin-title">Merchant Desk</h1>
+              <p>Payment outcomes, merchant cases, and recovery signals in one workspace.</p>
+            </div>
+            <span className="pp-admin-data-label"><i aria-hidden="true"/> Sandbox · fictional records</span>
+          </section>
           <PaymentEvents data={data} loading={loading} failedRate={failedRate} failedOrders={failedOrders} totalOrders={totalOrders}/>
-          <OrderManagement data={data} loading={loading} totalOrders={totalOrders}/>
+          <AdminAnalyticsStudio rows={activity} loading={activityLoading} error={activityError}/>
+          <CheckoutDiagnostics rows={activity} loading={activityLoading} error={activityError}/>
+          <section className="pp-screen pp-admin-ledger-screen" id="orders" aria-labelledby="pp-admin-ledger-title">
+            <div className="pp-admin-section-head">
+              <div><h2 id="pp-admin-ledger-title">Payment activity</h2><p>Search and review recent checkout records across connected merchants.</p></div>
+              <span className="pp-admin-record-count">{activityLoading ? "Loading records" : `${activity.length} records`}</span>
+            </div>
+            <PaymentLedgerGrid rows={activity} loading={activityLoading} error={activityError}/>
+            <OrderManagement data={data} loading={loading} totalOrders={totalOrders}/>
+          </section>
           <section className="pp-screen pp-demo-tools" aria-labelledby="pp-demo-tools-title">
-            <div className="pp-hero"><div className="pp-title"><h1 id="pp-demo-tools-title">Demo Tools</h1><p>Sandbox testing controls — not visible to merchants.</p></div></div>
+            <div className="pp-hero"><div className="pp-title"><h2 id="pp-demo-tools-title">Demo tools</h2><p>Sandbox testing controls — not visible to merchants.</p></div></div>
             <button type="button" className="pp-reset-demo pp-demo-reset" onClick={() => void reset()} disabled={updating} title="Restore the demo data"><Icon name="refresh"/>{updating ? "Resetting…" : "Reset demo"}</button>
             <TransactionSimulations/>
             <MerchantAnalytics/>
