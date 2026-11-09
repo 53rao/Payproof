@@ -43,7 +43,7 @@ export function MerchantCaseBreakdown() {
       <a href={`/admin/cases?merchantId=${encodeURIComponent(merchant.id)}`}>{merchant.name}</a>
       <span>Total open cases: {merchant.openCases ?? 0}</span>
       <span>Open human payment failures requiring merchant review: {merchant.casesNeedingAction ?? 0}</span>
-      <b>{merchant.casesNeedingAction ?? 0} need action</b>
+      <b className={(merchant.casesNeedingAction ?? 0) > 0 ? "is-actionable" : "is-clear"}>{merchant.casesNeedingAction ?? 0} need action</b>
     </div>)}
   </div>;
 }
