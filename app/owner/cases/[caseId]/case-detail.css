@@ -135,3 +135,16 @@
 .pp-case-review-side>details{width:100%;box-sizing:border-box;margin:0;padding-left:16px;padding-right:16px;border-radius:10px}
 .pp-case-workspace-modal .pp-case-review-side .pp-case-winback{margin:0}
 @media(max-width:760px){.pp-case-review-grid{grid-template-columns:minmax(0,1fr);gap:12px}.pp-case-workspace-modal .pp-case-review-main .pp-evidence-panel{max-height:min(50dvh,460px)}.pp-case-draft-head-actions{align-items:flex-end;flex-direction:column}}
+
+/* Merchant response submission */
+.pp-case-review-grid.is-single{grid-template-columns:minmax(0,1fr)}
+.pp-case-submitted-badge{display:inline-flex;align-items:center;border-radius:2px;background:#e8ee60;color:#17243b;padding:5px 8px;font-size:9px;font-weight:750;letter-spacing:.07em}
+.pp-case-submission-state{display:grid;gap:3px;margin:0 0 13px;border:1px solid #bcd8c6;background:#edf7f0;padding:10px 12px}
+.pp-case-submission-state b{color:#1f5a39;font-size:11.5px}
+.pp-case-submission-state p{margin:0;color:#3f6551;font-size:10.5px;line-height:1.5}
+.pp-case-submission-state.is-readonly{margin-bottom:12px}
+.pp-case-submission-readonly pre{margin:0;border:1px solid #ded9cf;background:#f8f5ee;padding:15px;color:#2d3a50;font:11px/1.65 var(--mono);white-space:pre-wrap;overflow-wrap:anywhere;max-height:430px;overflow:auto}
+.pp-case-submit-card .pp-case-section-heading{margin-bottom:14px}
+.pp-case-submit-button{width:100%;min-height:40px!important;justify-content:center;margin-top:11px}
+.pp-case-submit-note{margin:8px 0 0;color:#657080;font-size:9.5px;line-height:1.5;text-align:center}
+@media(max-width:760px){.pp-case-submission-readonly pre{max-height:320px}.pp-case-submit-button{min-height:42px!important}}

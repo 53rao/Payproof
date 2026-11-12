@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import CasesListClient from "../owner/cases/CasesListClient";
 import "./merchant.css";
 
 type OpenCase = {
@@ -40,28 +42,6 @@ type DashboardData = {
   casesNeedingActionCount: number;
   incidents: IncidentAlert[];
 };
-
-function formatMoney(amount: number): string {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(amount);
-}
-
-function formatRelativeDate(iso: string): string {
-  const value = new Date(iso).getTime();
-  if (Number.isNaN(value)) return iso;
-  const diff = value - Date.now();
-  const abs = Math.abs(diff);
-  const relative = new Intl.RelativeTimeFormat("en-US", { numeric: "auto" });
-  if (abs < 60_000) return relative.format(Math.round(diff / 1_000), "second");
-  if (abs < 3_600_000) return relative.format(Math.round(diff / 60_000), "minute");
-  if (abs < 86_400_000) return relative.format(Math.round(diff / 3_600_000), "hour");
-  if (abs < 2_592_000_000) return relative.format(Math.round(diff / 86_400_000), "day");
-  if (abs < 31_536_000_000) return relative.format(Math.round(diff / 2_592_000_000), "month");
-  return relative.format(Math.round(diff / 31_536_000_000), "year");
-}
-
-function shortCaseId(id: string): string {
-  return id.length > 9 ? id.slice(0, 9) : id;
-}
 
 function formatDate(iso: string): string {
   try {
@@ -122,12 +102,12 @@ export default function MerchantDashboardPage() {
     return (
       <main className="pp-merchant-shell">
         <div className="pp-merchant-topbar">
-          <div className="pp-merchant-brand">
+          <Link href="/" className="pp-merchant-brand" aria-label="PayProof home">
             <span className="pp-merchant-mark">p.</span>
             <div className="pp-merchant-info">
               <span className="pp-merchant-name">Merchant Desk</span>
             </div>
-          </div>
+          </Link>
         </div>
         <div className="pp-merchant-container">
           <p className="pp-merchant-empty">Loading merchant store data…</p>
@@ -147,7 +127,7 @@ export default function MerchantDashboardPage() {
     <main className="pp-merchant-shell">
       {/* 1. Merchant Header */}
       <header className="pp-merchant-topbar">
-        <div className="pp-merchant-brand">
+        <Link href="/" className="pp-merchant-brand" aria-label="PayProof home">
           <span className="pp-merchant-mark">p.</span>
           <div className="pp-merchant-info">
             <div className="pp-merchant-name-wrap">
@@ -156,7 +136,7 @@ export default function MerchantDashboardPage() {
             </div>
             <span className="pp-merchant-powered">Powered by PayProof Network</span>
           </div>
-        </div>
+        </Link>
         <div className="pp-merchant-top-right">
           <button type="button" className="pp-merchant-signout" onClick={handleSignOut}>
             Sign out
@@ -194,7 +174,7 @@ export default function MerchantDashboardPage() {
           <div className="pp-merchant-section-head">
             <div>
               <h2 id="cases-heading">Cases &amp; complaints</h2>
-              <p>Only your store&apos;s cases, reviewed by the PayProof admin team.</p>
+              <p>Open a case to add evidence, draft a response with the agent, and submit it to PayPal for review.</p>
             </div>
             {actionCount > 0 && (
               <span className="pp-merchant-action-callout">
@@ -214,33 +194,9 @@ export default function MerchantDashboardPage() {
             </div>
           </div>
 
-          {cases.length === 0 ? (
-            <p className="pp-merchant-empty">No cases under review for {merchant?.name}.</p>
-          ) : (
-            <div className="pp-merchant-case-list">
-              {cases.map((c) => {
-                const inReview = c.status === "REVIEWED";
-                return (
-                  <div key={c.id} className="pp-merchant-case-row">
-                    <div className="pp-merchant-case-main">
-                      <span className="pp-merchant-case-short">{shortCaseId(c.id)}</span>
-                      <span className={`pp-merchant-case-status ${inReview ? "review" : "open"}`}>
-                        {inReview ? "In review" : "Open"}
-                      </span>
-                      <span className={`pp-merchant-case-origin ${c.origin === "AGENT" ? "agent" : "store"}`}>
-                        {c.origin === "AGENT" ? "Agent checkout" : "Store checkout"}
-                      </span>
-                    </div>
-                    <div className="pp-merchant-case-meta">
-                      <strong>{formatMoney(c.amount)}</strong>
-                      <time dateTime={c.createdAt}>{formatRelativeDate(c.createdAt)}</time>
-                    </div>
-                    <p className="pp-merchant-case-line">Payment incident · Under admin review</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <div className="pp-merchant-cases-embed">
+            <CasesListClient mode="merchant" embedded />
+          </div>
         </section>
 
         {/* 4. Incident Alerts */}

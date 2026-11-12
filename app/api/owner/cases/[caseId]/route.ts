@@ -3,7 +3,8 @@ import { verifyRequestOrigin } from "@/lib/auth";
 import { getCaseAccess } from "@/lib/case-access";
 import { getDatabase } from "@/db/client";
 import { getOwnerCase } from "@/lib/customer-case-store";
-import { getCaseSnapshot, hasSavedCustomerReplyDraft } from "@/lib/case-assistant";
+import { getCaseSnapshot } from "@/lib/case-assistant";
+import { getMerchantCaseSubmission } from "@/lib/merchant-case-response";
 import { containsProhibitedPaymentData } from "@/lib/privacy";
 
 type Context = { params: Promise<{ caseId: string }> };
@@ -13,8 +14,8 @@ export async function GET(_request: Request, { params }: Context) {
     if (!await getCaseAccess(caseId)) return NextResponse.json({ error: "Sign-in is required for this case." }, { status: 401, headers: { "Cache-Control": "no-store" } });
     const [record, snapshot] = await Promise.all([getOwnerCase(caseId), getCaseSnapshot(caseId)]);
     if (!record || !snapshot) return NextResponse.json({ error: "Case not found." }, { status: 404, headers: { "Cache-Control": "no-store" } });
-    const canCloseReview = await hasSavedCustomerReplyDraft(caseId);
-    return NextResponse.json({ case: record, snapshot, canCloseReview }, { headers: { "Cache-Control": "no-store" } });
+    const submission = await getMerchantCaseSubmission(caseId);
+    return NextResponse.json({ case: record, snapshot, submission, canCloseReview: Boolean(submission) }, { headers: { "Cache-Control": "no-store" } });
   } catch { return NextResponse.json({ error: "Case records could not be loaded." }, { status: 500, headers: { "Cache-Control": "no-store" } }); }
 }
 

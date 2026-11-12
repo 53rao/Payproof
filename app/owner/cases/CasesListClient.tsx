@@ -5,7 +5,7 @@ import CaseDetailClient from "./[caseId]/CaseDetailClient";
 import "./owner-cases.css";
 
 type Complaint = { id: string; type: string; originalText: string; createdAt: string } | null;
-type CaseRow = { id: string; orderId: string; type: string; status: string; cause: string; createdAt: string; simulated: boolean; merchantId: string; merchantName: string; customerReplySaved: boolean; origin?: "AGENT" | "HUMAN" | "UNKNOWN"; agentHandled?: boolean; humanReviewRequired?: boolean; orderStatus?: string; total?: number; suggestedNextStep?: string; complaint: Complaint };
+type CaseRow = { id: string; orderId: string; type: string; status: string; cause: string; createdAt: string; simulated: boolean; merchantId: string; merchantName: string; responseSubmitted: boolean; origin?: "AGENT" | "HUMAN" | "UNKNOWN"; agentHandled?: boolean; humanReviewRequired?: boolean; orderStatus?: string; total?: number; suggestedNextStep?: string; complaint: Complaint };
 type MerchantOption = { id: string; name: string };
 type MerchantHealth = { id: string; name: string; openCases?: number; casesNeedingAction?: number; failedPayments?: number; orderCount?: number };
 const columns = [{ id: "OPEN", title: "Open", hint: "Needs review" }, { id: "REVIEWED", title: "In review", hint: "Being handled" }, { id: "CLOSED", title: "Closed", hint: "Review complete" }];
@@ -67,8 +67,8 @@ export default function CasesListClient({ mode = "admin", embedded = false, data
 
   async function moveCase(row: CaseRow, status: string) {
     if (row.status === status || saving) return false;
-    if (status === "CLOSED" && isMerchant) { setError("PayProof admin closes a case after reviewing your submission."); return false; }
-    if (status === "CLOSED" && !row.customerReplySaved) { setError("Save a customer reply draft for this case before closing it."); return false; }
+    if (isMerchant && status !== "REVIEWED") { setError("PayProof admin manages case status. Submit your response and the admin will review it."); return false; }
+    if (status === "CLOSED" && !row.responseSubmitted) { setError("The merchant must submit a response before this case can be closed."); return false; }
     const previous = row.status;
     setSaving(row.id);
     setCases((items) => items.map((item) => item.id === row.id ? { ...item, status } : item));
@@ -99,9 +99,9 @@ export default function CasesListClient({ mode = "admin", embedded = false, data
     }
   }
 
-  function syncModalCase(status: string, customerReplySaved?: boolean) {
-    setCases((items) => items.map((item) => item.id === selected?.id ? { ...item, status, customerReplySaved: customerReplySaved ?? item.customerReplySaved } : item));
-    setSelected((item) => item ? { ...item, status, customerReplySaved: customerReplySaved ?? item.customerReplySaved } : item);
+  function syncModalCase(status: string, responseSubmitted?: boolean) {
+    setCases((items) => items.map((item) => item.id === selected?.id ? { ...item, status, responseSubmitted: responseSubmitted ?? item.responseSubmitted } : item));
+    setSelected((item) => item ? { ...item, status, responseSubmitted: responseSubmitted ?? item.responseSubmitted } : item);
   }
 
   useEffect(() => {
@@ -113,7 +113,7 @@ export default function CasesListClient({ mode = "admin", embedded = false, data
 
   const Shell = embedded ? "div" : "main";
   return <Shell className={`pp-owner-cases${isMerchant ? " pp-merchant-cases" : " pp-admin-cases"}${embedded ? " is-embedded" : ""}`}>
-    {!embedded && <header className="pp-owner-top"><Link href={homeHref} className="pp-owner-brand"><span>p.</span> PayProof <small>{isMerchant ? "MERCHANT PORTAL" : "MERCHANT DESK"}</small></Link><div><span className="pp-owner-demo">SIMULATED WORKSPACE</span><Link href={homeHref}>{isMerchant ? "Back to store ↗" : "Back to overview ↗"}</Link></div></header>}
+    {!embedded && <header className="pp-owner-top"><Link href="/" className="pp-owner-brand" aria-label="PayProof home"><span>p.</span> PayProof <small>{isMerchant ? "MERCHANT PORTAL" : "MERCHANT DESK"}</small></Link><div><span className="pp-owner-demo">SIMULATED WORKSPACE</span><Link href={homeHref}>{isMerchant ? "Back to store ↗" : "Back to overview ↗"}</Link></div></header>}
     <div className="pp-owner-container">
       {!embedded && <nav className="pp-owner-breadcrumb"><Link href={homeHref}>{isMerchant ? "Merchant portal" : "Merchant desk"}</Link><span>/</span><b>Cases &amp; complaints</b></nav>}
       {!embedded && <section className="pp-owner-title"><h1>{isMerchant ? <>Cases &amp; <em>complaints</em></> : <>Case <em>review</em></>}</h1>{!isMerchant && <p className="pp-case-review-sub">Merchant-submitted case records and evidence, ready for admin review.</p>}</section>}
@@ -147,12 +147,12 @@ export default function CasesListClient({ mode = "admin", embedded = false, data
         {error && <div className="pp-owner-board-toast" role="alert"><div><b>Couldn’t update the case board.</b><p>{error}</p></div><button type="button" onClick={() => setError("")} aria-label="Dismiss error">×</button></div>}
         {loading ? <div className="pp-owner-list-loading" role="status" aria-label="Loading cases"><i/><i/><i/></div> : <div className="pp-owner-kanban">{columns.map((column) => {
           const rows = visible.filter((row) => row.status === column.id);
-          return <section className="pp-owner-lane" key={column.id} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); const row = cases.find((item) => item.id === e.dataTransfer.getData("text/case-id")); if (row) void moveCase(row, column.id); }}>
+          return <section className="pp-owner-lane" key={column.id} onDragOver={(e) => { if (!isMerchant) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); if (isMerchant) return; const row = cases.find((item) => item.id === e.dataTransfer.getData("text/case-id")); if (row) void moveCase(row, column.id); }}>
             <header><div><h3>{column.title}</h3><small>{column.hint}</small></div><span>{rows.length}</span></header>
-            {rows.length ? rows.map((row) => <article className="pp-owner-case-card" key={row.id} draggable onDragStart={(e) => { e.dataTransfer.setData("text/case-id", row.id); e.dataTransfer.effectAllowed = "move"; }}>
+            {rows.length ? rows.map((row) => <article className="pp-owner-case-card" key={row.id} draggable={!isMerchant} onDragStart={(e) => { if (isMerchant) { e.preventDefault(); return; } e.dataTransfer.setData("text/case-id", row.id); e.dataTransfer.effectAllowed = "move"; }}>
               <div className="pp-owner-card-meta"><span>{row.merchantName}</span><span className={`pp-owner-case-status-chip ${row.status.toLowerCase()}`}>{row.status.toLowerCase()}</span></div>
               <button className="pp-owner-card-open" onClick={() => void openCase(row)} aria-label={`Open ${row.id} case workspace`}><b>{issueLabel(row)}</b><small>{row.id} · {row.orderId}</small><small>{row.total === undefined ? "Amount unavailable" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(row.total)} · {row.origin === "AGENT" ? "Agent checkout" : "Store checkout"}</small></button>
-              <div className="pp-owner-card-foot"><span>{row.complaint ? "Customer complaint" : "Payment incident"}</span><button onClick={() => void openCase(row)}>Review</button></div>
+              <div className="pp-owner-card-foot"><span>{row.complaint ? "Customer complaint" : "Payment incident"}{row.responseSubmitted ? " · Response submitted" : ""}</span><button onClick={() => void openCase(row)}>Review</button></div>
             </article>) : <div className="pp-owner-lane-empty">Drop a case here</div>}
           </section>;
         })}</div>}

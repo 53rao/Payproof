@@ -3,7 +3,7 @@ import { verifyRequestOrigin } from "@/lib/auth";
 import { getCaseAccess } from "@/lib/case-access";
 import { getDatabase } from "@/db/client";
 import { closeMemoryCase } from "@/lib/demo-store";
-import { hasSavedCustomerReplyDraft } from "@/lib/case-assistant";
+import { hasMerchantCaseSubmission } from "@/lib/merchant-case-response";
 
 type Context = { params: Promise<{ caseId: string }> };
 
@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: Context) {
     const access = await getCaseAccess(caseId);
     if (!access) return NextResponse.json({ error: "Sign-in is required for this case." }, { status: 401, headers: { "Cache-Control": "no-store" } });
     if (!access.owner) return NextResponse.json({ error: "Only PayProof admin can close a case review." }, { status: 403, headers: { "Cache-Control": "no-store" } });
-    if (!await hasSavedCustomerReplyDraft(caseId)) return NextResponse.json({ error: "Save a customer reply draft before closing this review." }, { status: 409 });
+    if (!await hasMerchantCaseSubmission(caseId)) return NextResponse.json({ error: "The merchant must submit a response before this review can close." }, { status: 409 });
     const db = getDatabase();
     if (!db) {
       if (!closeMemoryCase(caseId)) return NextResponse.json({ error: "Case not found." }, { status: 404 });
